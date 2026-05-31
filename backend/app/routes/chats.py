@@ -33,6 +33,26 @@ def _private_chat_between(user_id: int, other_id: int) -> Chat | None:
     return None
 
 
+def _user_summary(user_id: int | None) -> dict | None:
+    if not user_id:
+        return None
+    user = User.query.get(user_id)
+    if not user:
+        return None
+    return {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "account_type": user.account_type,
+    }
+
+
+def _serialize_message(message: ChatMessage) -> dict:
+    data = message.to_dict()
+    data["sender"] = _user_summary(message.sender_id)
+    return data
+
+
 @bp.get("")
 @login_required()
 def list_chats():
@@ -46,7 +66,7 @@ def list_chats():
         item = chat.to_dict()
         item["unread_count"] = ChatMessage.query.filter_by(chat_id=chat.id, is_recalled=False).count()
         latest = ChatMessage.query.filter_by(chat_id=chat.id).order_by(ChatMessage.sent_at.desc()).first()
-        item["latest_message"] = latest.to_dict() if latest else None
+        item["latest_message"] = _serialize_message(latest) if latest else None
         chats.append(item)
     return ok(chats)
 
@@ -112,7 +132,7 @@ def list_messages(chat_id):
     member.last_read_at = now_iso()
     db.session.add(member)
     messages = ChatMessage.query.filter_by(chat_id=chat_id).order_by(ChatMessage.sent_at.asc()).limit(200).all()
-    return ok([item.to_dict() for item in messages])
+    return ok([_serialize_message(item) for item in messages])
 
 
 @bp.post("/<int:chat_id>/messages")
@@ -145,7 +165,7 @@ def send_message(chat_id):
     db.session.flush()
     audit("send_chat_message", message, after=message.to_dict(), actor_id=actor.id)
     db.session.commit()
-    return ok(message.to_dict(), status=201)
+    return ok(_serialize_message(message), status=201)
 
 
 @bp.post("/messages/<int:message_id>/recall")

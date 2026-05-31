@@ -109,7 +109,7 @@ onMounted(load)
               </button>
               <div>
                 <strong style="color: var(--text)">{{ member.user.real_name }}</strong>
-                <div style="color: var(--muted); font-size: 13px">{{ member.user.username }}</div>
+                <div style="color: var(--muted); font-size: 13px">{{ humanRole(member.role) }}</div>
               </div>
             </div>
             <div class="badge-row" style="margin-top: 14px">

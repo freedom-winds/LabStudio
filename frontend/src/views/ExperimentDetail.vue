@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Download, FileText, FlaskConical, MessageCircle, Plus, Trash2, Upload } from 'lucide-vue-next'
+import { Download, FileText, FlaskConical, Folder, FolderPlus, MessageCircle, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
@@ -15,16 +15,20 @@ const phases = ref([])
 const selectedPhaseId = ref(null)
 const selectedStepId = ref(null)
 const stepFiles = ref([])
+const workspace = ref({ current_folder: null, breadcrumbs: [], folders: [], files: [] })
+const currentWorkspaceFolderId = ref(null)
 const presentations = ref([])
 const proposals = ref([])
 const newPhaseTitle = ref('新阶段')
 const newStepTitle = ref('新步骤')
+const newFolderName = ref('新文件夹')
 const draggedPhase = ref(null)
 const draggedStep = ref(null)
 
 const tabs = [
   ['overview', '总览'],
   ['plan', '实验计划'],
+  ['workspace', '文件存放区'],
   ['files', 'Step 文件'],
   ['ppt', 'PPT 版本'],
   ['proposals', '开题报告'],
@@ -51,6 +55,7 @@ async function load() {
     selectedStepId.value = selectedPhase.value?.steps?.[0]?.id || null
   }
   await loadFiles()
+  await loadWorkspace()
 }
 
 async function loadFiles() {
@@ -59,6 +64,74 @@ async function loadFiles() {
     return
   }
   stepFiles.value = await http.get(`/api/steps/${selectedStepId.value}/files`).catch(() => [])
+}
+
+async function loadWorkspace(folderId = currentWorkspaceFolderId.value) {
+  const query = folderId ? `?folder_id=${folderId}` : ''
+  workspace.value = await http.get(`/api/experiments/${route.params.id}/workspace${query}`)
+  currentWorkspaceFolderId.value = workspace.value.current_folder?.id || null
+}
+
+async function openWorkspaceFolder(folder) {
+  await loadWorkspace(folder?.id || null)
+}
+
+async function createWorkspaceFolder() {
+  const name = newFolderName.value.trim()
+  if (!name) return
+  await http.post(`/api/experiments/${route.params.id}/workspace/folders`, {
+    name,
+    parent_id: currentWorkspaceFolderId.value,
+  })
+  newFolderName.value = '新文件夹'
+  await loadWorkspace()
+}
+
+async function renameWorkspaceFolder(folder) {
+  const name = window.prompt('修改文件夹名称', folder.name)
+  if (!name?.trim()) return
+  await http.patch(`/api/experiment-workspace/folders/${folder.id}`, { name: name.trim() })
+  await loadWorkspace()
+}
+
+async function deleteWorkspaceFolder(folder) {
+  if (!window.confirm(`确认删除文件夹「${folder.name}」及其下所有文件？`)) return
+  await http.delete(`/api/experiment-workspace/folders/${folder.id}`)
+  await loadWorkspace()
+}
+
+async function uploadWorkspaceFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  if (currentWorkspaceFolderId.value) form.append('folder_id', currentWorkspaceFolderId.value)
+  await http.post(`/api/experiments/${route.params.id}/workspace/files`, form)
+  event.target.value = ''
+  await loadWorkspace()
+}
+
+async function replaceWorkspaceFile(event, fileAsset) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  await http.post(`/api/experiment-workspace/files/${fileAsset.id}/replace`, form)
+  event.target.value = ''
+  await loadWorkspace()
+}
+
+async function renameWorkspaceFile(fileAsset) {
+  const name = window.prompt('修改文件名称', fileAsset.original_filename)
+  if (!name?.trim()) return
+  await http.patch(`/api/experiment-workspace/files/${fileAsset.id}`, { name: name.trim() })
+  await loadWorkspace()
+}
+
+async function deleteWorkspaceFile(fileAsset) {
+  if (!window.confirm(`确认删除文件「${fileAsset.original_filename}」？`)) return
+  await http.delete(`/api/experiment-workspace/files/${fileAsset.id}`)
+  await loadWorkspace()
 }
 
 async function addPhase() {
@@ -295,6 +368,71 @@ onMounted(load)
         </article>
       </section>
 
+      <section v-if="active === 'workspace'" class="card pad">
+        <div class="section-title">
+          <div>
+            <h3>文件存放区</h3>
+            <p>实验参与者可创建文件夹、上传文件并替换更新文件。</p>
+          </div>
+          <label class="btn primary">
+            <Upload :size="18" />
+            上传文件
+            <input hidden type="file" @change="uploadWorkspaceFile" />
+          </label>
+        </div>
+        <div class="badge-row" style="margin-bottom: 18px">
+          <button class="btn ghost" @click="openWorkspaceFolder(null)">根目录</button>
+          <button
+            v-for="folder in workspace.breadcrumbs"
+            :key="folder.id"
+            class="btn ghost"
+            @click="openWorkspaceFolder(folder)"
+          >
+            {{ folder.name }}
+          </button>
+        </div>
+        <div class="form-grid" style="grid-template-columns: minmax(180px, 1fr) auto; margin-bottom: 18px">
+          <input v-model="newFolderName" class="input" placeholder="文件夹名称" />
+          <button class="btn outline" @click="createWorkspaceFolder"><FolderPlus :size="18" />创建文件夹</button>
+        </div>
+        <div class="card-grid three" style="margin-bottom: 24px">
+          <article v-for="folder in workspace.folders" :key="folder.id" class="card pad">
+            <span class="stat-icon"><Folder :size="22" :stroke-width="1.75" /></span>
+            <h3 style="margin-top: 18px">{{ folder.name }}</h3>
+            <p style="color: var(--muted)">创建者 {{ folder.creator?.real_name || '-' }}</p>
+            <p style="color: var(--muted)">最后编辑 {{ formatDate(folder.updated_at) }}</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <button class="btn outline" @click="openWorkspaceFolder(folder)">进入</button>
+              <button class="btn ghost" @click="renameWorkspaceFolder(folder)"><Pencil :size="16" />重命名</button>
+              <button class="btn danger" @click="deleteWorkspaceFolder(folder)"><Trash2 :size="16" />删除</button>
+            </div>
+          </article>
+        </div>
+        <table class="table">
+          <thead>
+            <tr><th>文件名</th><th>大小</th><th>上传者</th><th>上传时间</th><th>最后编辑</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="file in workspace.files" :key="file.id">
+              <td>{{ file.original_filename }}</td>
+              <td>{{ fileSize(file.file_size) }}</td>
+              <td>{{ file.uploader?.real_name || '-' }}</td>
+              <td>{{ formatDate(file.created_at) }}</td>
+              <td>{{ formatDate(file.updated_at) }}</td>
+              <td style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+                <a class="btn ghost" :href="`/api/experiment-workspace/files/${file.id}/download`"><Download :size="16" />下载</a>
+                <label class="btn outline"><Upload :size="16" />替换<input hidden type="file" @change="replaceWorkspaceFile($event, file)" /></label>
+                <button class="btn ghost" @click="renameWorkspaceFile(file)"><Pencil :size="16" />重命名</button>
+                <button class="btn danger" @click="deleteWorkspaceFile(file)"><Trash2 :size="16" />删除</button>
+              </td>
+            </tr>
+            <tr v-if="!workspace.folders.length && !workspace.files.length">
+              <td colspan="6" style="color: var(--muted)">暂无文件。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <section v-if="active === 'files'" class="card pad">
         <div class="section-title">
           <div><h3>Step 文件</h3><p>普通实验文件、视频与数据均归属到当前 Step。</p></div>
@@ -315,6 +453,7 @@ onMounted(load)
                 <tr v-for="file in stepFiles.filter((f) => f.file_category === category)" :key="file.id">
                   <td>{{ file.original_filename }}</td>
                   <td>{{ fileSize(file.file_size) }}</td>
+                  <td>{{ file.uploader?.real_name || '-' }}</td>
                   <td style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
                     <a class="btn ghost" :href="`/api/step-files/${file.id}/download`"><Download :size="16" />下载</a>
                     <button class="btn danger" @click="deleteStepFile(file)"><Trash2 :size="16" />删除</button>
@@ -334,7 +473,7 @@ onMounted(load)
         <div class="timeline-list">
           <article v-for="version in presentations" :key="version.id" class="ppt-row" :class="{ current: version.is_current }">
             <strong style="color: var(--primary)">v{{ version.version_no }}</strong>
-            <span>{{ version.uploader_id }}</span>
+            <span>{{ version.uploader?.real_name || '-' }}</span>
             <span>{{ formatDate(version.created_at) }}</span>
             <span>{{ version.change_note || '无修改说明' }}</span>
             <a class="btn ghost" :href="`/api/presentations/${version.id}/download`"><Download :size="16" />下载</a>
@@ -353,7 +492,7 @@ onMounted(load)
           <tbody>
             <tr v-for="proposal in proposals" :key="proposal.id">
               <td>{{ proposal.title }}</td>
-              <td>{{ proposal.submitter_id }}</td>
+              <td>{{ proposal.submitter?.real_name || '-' }}</td>
               <td>{{ formatDate(proposal.updated_at) }}</td>
               <td style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
                 <a v-if="proposal.file_id" class="btn ghost" :href="`/api/proposals/${proposal.id}/download`">下载</a>
@@ -374,7 +513,7 @@ onMounted(load)
               </button>
               <div>
                 <strong style="color: var(--text)">{{ member.user.real_name }}</strong>
-                <div style="color: var(--muted)">{{ member.user.username }}</div>
+                <div style="color: var(--muted)">{{ humanRole(member.role) }}</div>
               </div>
             </div>
             <span class="badge primary" style="margin-top: 14px">{{ humanRole(member.role) }}</span>

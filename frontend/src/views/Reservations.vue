@@ -92,11 +92,11 @@ onMounted(load)
               <strong style="color: var(--text)">{{ item.purpose }}</strong>
               <div v-if="item.participants_note" style="color: var(--muted); margin-top: 6px">{{ item.participants_note }}</div>
             </td>
-            <td>{{ item.applicant?.real_name || item.applicant_id }}</td>
+            <td>{{ item.applicant?.real_name || '-' }}</td>
             <td>
               <div v-if="item.approvals?.length" class="timeline-list" style="gap: 8px">
                 <div v-for="approval in item.approvals" :key="approval.id" style="display: flex; gap: 8px; align-items: center">
-                  <span>{{ approval.teacher?.real_name || approval.teacher_id }}</span>
+                  <span>{{ approval.teacher?.real_name || '-' }}</span>
                   <StatusBadge :value="approval.status" />
                 </div>
               </div>

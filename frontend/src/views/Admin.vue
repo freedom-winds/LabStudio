@@ -118,7 +118,7 @@ onMounted(load)
           <tr v-for="log in logs" :key="log.id">
             <td>{{ log.action_type }}</td>
             <td>{{ log.object_type }} #{{ log.object_id }}</td>
-            <td>{{ log.actor_id }}</td>
+            <td>{{ log.actor?.real_name || '系统' }}</td>
             <td>{{ formatDate(log.created_at) }}</td>
           </tr>
         </tbody>
