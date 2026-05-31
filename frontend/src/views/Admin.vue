@@ -1,6 +1,6 @@
 <script setup>
-import { MessageCircle, Trash2 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { MessageCircle, Pencil, Save, Trash2, X } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
@@ -13,7 +13,10 @@ const active = ref('users')
 const users = ref([])
 const logs = ref([])
 const form = ref({ username: '20260001', real_name: '新用户', gender: '女', account_type: 'student' })
+const editingUserId = ref(null)
+const editForm = ref({ real_name: '', gender: '女', account_type: 'student', status: 'active' })
 const error = ref('')
+const isAdmin = computed(() => authState.user?.account_type === 'admin')
 
 async function load() {
   error.value = ''
@@ -28,6 +31,38 @@ async function createUser() {
   } catch (err) {
     error.value = err.message || '创建用户失败'
   }
+}
+
+function canEditUser(user) {
+  if (isAdmin.value) return true
+  return authState.user?.account_type === 'teacher' && user.account_type === 'student'
+}
+
+function startEdit(user) {
+  editingUserId.value = user.id
+  editForm.value = {
+    real_name: user.real_name,
+    gender: user.gender,
+    account_type: user.account_type,
+    status: user.status,
+  }
+}
+
+async function saveUser(user) {
+  const payload = isAdmin.value
+    ? { ...editForm.value }
+    : { real_name: editForm.value.real_name, gender: editForm.value.gender }
+  try {
+    await http.patch(`/api/users/${user.id}`, payload)
+    editingUserId.value = null
+    await load()
+  } catch (err) {
+    error.value = err.message || '保存用户失败'
+  }
+}
+
+function cancelEdit() {
+  editingUserId.value = null
 }
 
 async function deleteUser(user) {
@@ -71,8 +106,8 @@ onMounted(load)
         <select v-model="form.gender" class="select"><option>男</option><option>女</option></select>
         <select v-model="form.account_type" class="select">
           <option value="student">学生</option>
-          <option value="teacher">教师</option>
-          <option value="admin">系统管理员</option>
+          <option v-if="isAdmin" value="teacher">教师</option>
+          <option v-if="isAdmin" value="admin">系统管理员</option>
         </select>
         <button class="btn primary" @click="createUser">创建用户</button>
       </div>
@@ -84,22 +119,52 @@ onMounted(load)
         <tbody>
           <tr v-for="user in users" :key="user.id">
             <td>
-              <button class="btn ghost" style="gap: 10px" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
+              <input v-if="editingUserId === user.id" v-model="editForm.real_name" class="input" style="width: 140px" />
+              <button v-else class="btn ghost" style="gap: 10px" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
                 <span class="avatar" style="width: 34px; height: 34px; border-radius: 12px">{{ user.real_name.slice(0, 1) }}</span>
                 {{ user.real_name }}
               </button>
             </td>
             <td>{{ user.username }}</td>
-            <td>{{ humanRole(user.account_type) }}</td>
-            <td>{{ user.gender }}</td>
-            <td><StatusBadge :value="user.status" /></td>
+            <td>
+              <select v-if="editingUserId === user.id && isAdmin" v-model="editForm.account_type" class="select" style="width: 140px">
+                <option value="student">学生</option>
+                <option value="teacher">教师</option>
+                <option value="admin">系统管理员</option>
+              </select>
+              <span v-else>{{ humanRole(user.account_type) }}</span>
+            </td>
+            <td>
+              <select v-if="editingUserId === user.id" v-model="editForm.gender" class="select" style="width: 92px">
+                <option>男</option>
+                <option>女</option>
+              </select>
+              <span v-else>{{ user.gender }}</span>
+            </td>
+            <td>
+              <select v-if="editingUserId === user.id && isAdmin" v-model="editForm.status" class="select" style="width: 120px">
+                <option value="active">启用</option>
+                <option value="disabled">禁用</option>
+                <option value="deleted">删除</option>
+              </select>
+              <StatusBadge v-else :value="user.status" />
+            </td>
             <td style="display: flex; gap: 8px">
-              <button class="btn ghost" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
-                <MessageCircle :size="16" />私聊
-              </button>
-              <button class="btn danger" :disabled="user.id === authState.user?.id" @click="deleteUser(user)">
-                <Trash2 :size="16" />删除
-              </button>
+              <template v-if="editingUserId === user.id">
+                <button class="btn primary" @click="saveUser(user)"><Save :size="16" />保存</button>
+                <button class="btn ghost" @click="cancelEdit"><X :size="16" />取消</button>
+              </template>
+              <template v-else>
+                <button v-if="canEditUser(user)" class="btn outline" @click="startEdit(user)">
+                  <Pencil :size="16" />编辑
+                </button>
+                <button class="btn ghost" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
+                  <MessageCircle :size="16" />私聊
+                </button>
+                <button v-if="isAdmin" class="btn danger" :disabled="user.id === authState.user?.id" @click="deleteUser(user)">
+                  <Trash2 :size="16" />删除
+                </button>
+              </template>
             </td>
           </tr>
         </tbody>

@@ -14,6 +14,8 @@ export const statusText = {
   approved: '已通过',
   rejected: '已拒绝',
   cancelled: '已取消',
+  disabled: '已禁用',
+  deleted: '已删除',
 }
 
 export const roleText = {

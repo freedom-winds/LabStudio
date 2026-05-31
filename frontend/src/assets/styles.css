@@ -565,7 +565,9 @@ a {
 .status-rejected,
 .status-cancelled,
 .status-ended,
-.status-archived {
+.status-archived,
+.status-disabled,
+.status-deleted {
   color: var(--muted);
   background: #e5e7eb;
 }

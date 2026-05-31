@@ -7,6 +7,10 @@ from ..utils import APIError, audit, get_json, ok, paginate, require_fields, upd
 
 bp = Blueprint("users", __name__)
 
+VALID_GENDERS = {"男", "女"}
+VALID_ACCOUNT_TYPES = {"student", "teacher", "admin"}
+VALID_STATUSES = {"active", "disabled", "deleted"}
+
 
 @bp.get("")
 @login_required()
@@ -29,9 +33,9 @@ def create_user():
     data = get_json()
     require_fields(data, ["username", "real_name", "gender", "account_type"])
     validate_username(data["username"])
-    if data["gender"] not in {"男", "女"}:
+    if data["gender"] not in VALID_GENDERS:
         raise APIError("INVALID_GENDER", "Gender must be 男 or 女.", 422)
-    if data["account_type"] not in {"student", "teacher", "admin"}:
+    if data["account_type"] not in VALID_ACCOUNT_TYPES:
         raise APIError("INVALID_ACCOUNT_TYPE", "Invalid account type.", 422)
     if data["account_type"] in {"teacher", "admin"}:
         require_admin(actor)
@@ -69,10 +73,24 @@ def get_user(user_id):
 @login_required()
 def update_user(user_id):
     actor = current_user()
-    require_admin(actor)
     user = User.query.get_or_404(user_id)
+    data = get_json()
+    if not is_admin(actor):
+        if not is_teacher(actor) or user.account_type != "student":
+            raise APIError("FORBIDDEN", "Only system administrators can update this user.", 403)
+        forbidden_fields = set(data) - {"real_name", "gender"}
+        if forbidden_fields:
+            raise APIError("FORBIDDEN", "Teachers can only update student profile fields.", 403)
+
+    if "gender" in data and data["gender"] not in VALID_GENDERS:
+        raise APIError("INVALID_GENDER", "Gender must be 男 or 女.", 422)
+    if "account_type" in data and data["account_type"] not in VALID_ACCOUNT_TYPES:
+        raise APIError("INVALID_ACCOUNT_TYPE", "Invalid account type.", 422)
+    if "status" in data and data["status"] not in VALID_STATUSES:
+        raise APIError("INVALID_STATUS", "Invalid user status.", 422)
+
     before = user.to_dict()
-    update_model(user, get_json(), ["real_name", "gender", "status", "account_type"])
+    update_model(user, data, ["real_name", "gender", "status", "account_type"])
     db.session.add(user)
     audit("update_user", user, before=before, after=user.to_dict(), actor_id=actor.id)
     db.session.commit()

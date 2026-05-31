@@ -46,6 +46,11 @@ def _get_or_create_experiment_chat(experiment: TeamExperiment) -> Chat:
     return chat
 
 
+def _experiment_member_payload(member: ExperimentMember) -> dict:
+    user = User.query.get(member.user_id)
+    return {**member.to_dict(), "user": user.to_dict() if user else None}
+
+
 def _visible_team_ids(user) -> set[int]:
     team_ids = {row.team_id for row in TeamMember.query.filter_by(user_id=user.id).all()}
     team_ids.update(row.id for row in Team.query.filter_by(creator_id=user.id, is_deleted=False).all())
@@ -188,7 +193,7 @@ def get_experiment(experiment_id):
     data["team"] = Team.query.get(experiment.team_id).to_dict() if Team.query.get(experiment.team_id) else None
     data["topic"] = Topic.query.get(experiment.topic_id).to_dict() if Topic.query.get(experiment.topic_id) else None
     data["members"] = [
-        {**member.to_dict(), "user": User.query.get(member.user_id).to_dict()}
+        _experiment_member_payload(member)
         for member in ExperimentMember.query.filter_by(experiment_id=experiment_id).all()
     ]
     data["summary"] = {
@@ -262,20 +267,29 @@ def upsert_experiment_member(experiment_id):
     actor = current_user()
     if not can_manage_experiment(actor, experiment_id):
         raise APIError("FORBIDDEN", "Experiment management permission is required.", 403)
+    experiment = TeamExperiment.query.get_or_404(experiment_id)
     data = get_json()
     require_fields(data, ["user_id", "role"])
     if data["role"] not in {"manager", "participant", "observer"}:
         raise APIError("INVALID_ROLE", "Invalid experiment role.", 422)
-    member = ExperimentMember.query.filter_by(experiment_id=experiment_id, user_id=data["user_id"]).first()
+    user = User.query.get_or_404(int(data["user_id"]))
+    if user.status == "deleted":
+        raise APIError("INVALID_USER", "Deleted users cannot join an experiment.", 422)
+    if not TeamMember.query.filter_by(team_id=experiment.team_id, user_id=user.id).first():
+        raise APIError("USER_NOT_IN_TEAM", "Experiment members must belong to the experiment team.", 422)
+
+    member = ExperimentMember.query.filter_by(experiment_id=experiment_id, user_id=user.id).first()
     if not member:
-        member = ExperimentMember(experiment_id=experiment_id, user_id=data["user_id"])
+        member = ExperimentMember(experiment_id=experiment_id, user_id=user.id)
     before = member.to_dict() if member.id else None
     member.role = data["role"]
     db.session.add(member)
     db.session.flush()
+    chat = _get_or_create_experiment_chat(experiment)
+    _sync_chat_member(chat.id, member.user_id)
     audit("upsert_experiment_member", member, before=before, after=member.to_dict(), actor_id=actor.id)
     db.session.commit()
-    return ok(member.to_dict())
+    return ok(_experiment_member_payload(member))
 
 
 @bp.delete("/<int:experiment_id>/members/<int:user_id>")
@@ -286,6 +300,9 @@ def remove_experiment_member(experiment_id, user_id):
         raise APIError("FORBIDDEN", "Experiment management permission is required.", 403)
     member = ExperimentMember.query.filter_by(experiment_id=experiment_id, user_id=user_id).first_or_404()
     before = member.to_dict()
+    chat = Chat.query.filter_by(chat_type="experiment", experiment_id=experiment_id).first()
+    if chat:
+        ChatMember.query.filter_by(chat_id=chat.id, user_id=user_id).delete()
     db.session.delete(member)
     audit("remove_experiment_member", member, before=before, actor_id=actor.id)
     db.session.commit()

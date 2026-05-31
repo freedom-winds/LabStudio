@@ -1,6 +1,6 @@
 <script setup>
-import { MessageCircle, Plus, Trash2, X } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { MessageCircle, Plus, Trash2, UserPlus, X } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
@@ -12,11 +12,19 @@ const route = useRoute()
 const router = useRouter()
 const team = ref(null)
 const topics = ref([])
+const students = ref([])
 const selectedTopic = ref('')
+const memberForm = ref({ user_id: '', role: 'member' })
+
+const availableStudents = computed(() => {
+  const memberIds = new Set((team.value?.members || []).map((member) => member.user_id))
+  return students.value.filter((student) => !memberIds.has(student.id))
+})
 
 async function load() {
   team.value = await http.get(`/api/teams/${route.params.id}`)
   topics.value = (await http.get(`/api/topics?year_id=${team.value.year_id}`)).items.filter((topic) => topic.status === 'active')
+  students.value = (await http.get('/api/users')).items.filter((user) => user.account_type === 'student' && user.status === 'active')
 }
 
 async function addTopic() {
@@ -35,6 +43,24 @@ async function removeTopic(topic) {
 async function deleteExperiment(experiment) {
   if (!window.confirm(`确认删除实验「${experiment.name}」？`)) return
   await http.delete(`/api/experiments/${experiment.id}`, { reason: '队伍页删除实验' })
+  await load()
+}
+
+async function upsertTeamMember(userId = memberForm.value.user_id, role = memberForm.value.role) {
+  if (!userId) return
+  await http.post(`/api/teams/${team.value.id}/members`, { user_id: Number(userId), role })
+  memberForm.value = { user_id: '', role: 'member' }
+  await load()
+}
+
+async function setTeamMemberRole(member, role) {
+  if (member.role === role) return
+  await upsertTeamMember(member.user_id, role)
+}
+
+async function removeTeamMember(member) {
+  if (!window.confirm(`确认将「${member.user.real_name}」移出队伍？`)) return
+  await http.delete(`/api/teams/${team.value.id}/members/${member.user_id}`)
   await load()
 }
 
@@ -95,7 +121,27 @@ onMounted(load)
       </section>
 
       <section class="card pad">
-        <h3>队伍成员</h3>
+        <div class="section-title">
+          <div>
+            <h3>队伍成员</h3>
+            <p>将学生加入队伍，并设置队伍成员或领队身份。</p>
+          </div>
+          <div class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 130px auto">
+            <select v-model="memberForm.user_id" class="select">
+              <option value="">选择学生</option>
+              <option v-for="student in availableStudents" :key="student.id" :value="student.id">
+                {{ student.real_name }}
+              </option>
+            </select>
+            <select v-model="memberForm.role" class="select">
+              <option value="member">队伍成员</option>
+              <option value="leader">队伍领队</option>
+            </select>
+            <button class="btn primary" :disabled="!memberForm.user_id" @click="upsertTeamMember()">
+              <UserPlus :size="18" />加入队伍
+            </button>
+          </div>
+        </div>
         <div class="card-grid three">
           <div v-for="member in team.members" :key="member.id" class="card pad">
             <div style="display: flex; gap: 14px; align-items: center">
@@ -113,9 +159,15 @@ onMounted(load)
               </div>
             </div>
             <div class="badge-row" style="margin-top: 14px">
-              <span class="badge primary">{{ humanRole(member.role) }}</span>
+              <select class="select" style="width: 132px" :value="member.role" @change="setTeamMemberRole(member, $event.target.value)">
+                <option value="member">队伍成员</option>
+                <option value="leader">队伍领队</option>
+              </select>
               <button class="btn ghost" :disabled="member.user.id === authState.user?.id" @click="startPrivateChat(member.user)">
                 <MessageCircle :size="16" />私聊
+              </button>
+              <button class="btn danger" :disabled="member.user_id === team.creator_id" @click="removeTeamMember(member)">
+                <Trash2 :size="16" />移出
               </button>
             </div>
           </div>

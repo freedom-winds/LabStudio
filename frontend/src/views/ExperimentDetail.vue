@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Download, FileText, FlaskConical, Folder, FolderPlus, MessageCircle, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next'
+import { Download, FileText, FlaskConical, Folder, FolderPlus, MessageCircle, Pencil, Plus, Trash2, Upload, UserPlus } from 'lucide-vue-next'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
@@ -19,9 +19,11 @@ const workspace = ref({ current_folder: null, breadcrumbs: [], folders: [], file
 const currentWorkspaceFolderId = ref(null)
 const presentations = ref([])
 const proposals = ref([])
+const teamMembers = ref([])
 const newPhaseTitle = ref('新阶段')
 const newStepTitle = ref('新步骤')
 const newFolderName = ref('新文件夹')
+const experimentMemberForm = ref({ user_id: '', role: 'participant' })
 const draggedPhase = ref(null)
 const draggedStep = ref(null)
 
@@ -42,9 +44,17 @@ const selectedStep = computed(() => selectedPhase.value?.steps?.find((item) => i
 const allSteps = computed(() => phases.value.flatMap((p) => p.steps || []))
 const completedSteps = computed(() => allSteps.value.filter((s) => s.status === 'done').length)
 const totalSteps = computed(() => allSteps.value.length)
+const availableExperimentMembers = computed(() => {
+  const memberIds = new Set((experiment.value?.members || []).map((member) => member.user_id))
+  return teamMembers.value.filter((member) => !memberIds.has(member.user_id))
+})
 
 async function load() {
   experiment.value = await http.get(`/api/experiments/${route.params.id}`)
+  const teamDetail = await http.get(`/api/teams/${experiment.value.team_id}`).catch(() => null)
+  teamMembers.value = (teamDetail?.members || []).filter(
+    (member) => member.user?.account_type === 'student' && member.user?.status === 'active',
+  )
   phases.value = await http.get(`/api/experiments/${route.params.id}/phases`)
   presentations.value = await http.get(`/api/experiments/${route.params.id}/presentations`)
   proposals.value = await http.get(`/api/experiments/${route.params.id}/proposals`)
@@ -200,6 +210,24 @@ async function startPrivateChat(user) {
   if (!user?.id) return
   const chat = await http.post('/api/chats', { user_id: user.id })
   await router.push(`/app/chats?chat_id=${chat.id}`)
+}
+
+async function upsertExperimentMember(userId = experimentMemberForm.value.user_id, role = experimentMemberForm.value.role) {
+  if (!userId) return
+  await http.post(`/api/experiments/${route.params.id}/members`, { user_id: Number(userId), role })
+  experimentMemberForm.value = { user_id: '', role: 'participant' }
+  await load()
+}
+
+async function setExperimentMemberRole(member, role) {
+  if (member.role === role) return
+  await upsertExperimentMember(member.user_id, role)
+}
+
+async function removeExperimentMember(member) {
+  if (!window.confirm(`确认将「${member.user.real_name}」移出实验？`)) return
+  await http.delete(`/api/experiments/${route.params.id}/members/${member.user_id}`)
+  await load()
 }
 
 async function uploadStepFile(event, category) {
@@ -504,7 +532,28 @@ onMounted(load)
       </section>
 
       <section v-if="active === 'members'" class="card pad">
-        <h3>实验成员</h3>
+        <div class="section-title">
+          <div>
+            <h3>实验成员</h3>
+            <p>从所属队伍学生中选择，设置实验管理员、参与者或观察者。</p>
+          </div>
+          <div class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 140px auto">
+            <select v-model="experimentMemberForm.user_id" class="select">
+              <option value="">选择队伍学生</option>
+              <option v-for="member in availableExperimentMembers" :key="member.id" :value="member.user_id">
+                {{ member.user.real_name }}（{{ humanRole(member.role) }}）
+              </option>
+            </select>
+            <select v-model="experimentMemberForm.role" class="select">
+              <option value="manager">实验管理员</option>
+              <option value="participant">实验参与者</option>
+              <option value="observer">实验观察者</option>
+            </select>
+            <button class="btn primary" :disabled="!experimentMemberForm.user_id" @click="upsertExperimentMember()">
+              <UserPlus :size="18" />加入实验
+            </button>
+          </div>
+        </div>
         <div class="card-grid three">
           <article v-for="member in experiment.members" :key="member.id" class="card pad">
             <div style="display: flex; gap: 14px; align-items: center">
@@ -516,7 +565,16 @@ onMounted(load)
                 <div style="color: var(--muted)">{{ humanRole(member.role) }}</div>
               </div>
             </div>
-            <span class="badge primary" style="margin-top: 14px">{{ humanRole(member.role) }}</span>
+            <div class="badge-row" style="margin-top: 14px">
+              <select class="select" style="width: 148px" :value="member.role" @change="setExperimentMemberRole(member, $event.target.value)">
+                <option value="manager">实验管理员</option>
+                <option value="participant">实验参与者</option>
+                <option value="observer">实验观察者</option>
+              </select>
+              <button class="btn danger" @click="removeExperimentMember(member)">
+                <Trash2 :size="16" />移出
+              </button>
+            </div>
           </article>
         </div>
       </section>

@@ -18,6 +18,8 @@ from ..utils import APIError, audit, get_json, ok, paginate, require_fields, upd
 
 bp = Blueprint("teams", __name__)
 
+VALID_TEAM_ROLES = {"leader", "member"}
+
 
 def _sync_chat_member(chat_id: int, user_id: int) -> None:
     if not ChatMember.query.filter_by(chat_id=chat_id, user_id=user_id).first():
@@ -46,6 +48,11 @@ def _get_or_create_experiment_chat(experiment: TeamExperiment) -> Chat:
         db.session.add(chat)
         db.session.flush()
     return chat
+
+
+def _team_member_payload(member: TeamMember) -> dict:
+    user = User.query.get(member.user_id)
+    return {**member.to_dict(), "user": user.to_dict() if user else None}
 
 
 def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> TeamExperiment:
@@ -118,6 +125,8 @@ def create_team():
     for member_data in data.get("members", []):
         user_id = int(member_data["user_id"])
         role = member_data.get("role", "member")
+        if role not in VALID_TEAM_ROLES:
+            raise APIError("INVALID_ROLE", "Invalid team role.", 422)
         members_by_user[user_id] = "leader" if user_id == actor.id else role
 
     for user_id, role in members_by_user.items():
@@ -143,10 +152,7 @@ def get_team(team_id):
     if team.is_deleted and not is_admin(current_user()):
         raise APIError("NOT_FOUND", "Resource not found.", 404)
     data = team.to_dict()
-    data["members"] = [
-        {**member.to_dict(), "user": User.query.get(member.user_id).to_dict()}
-        for member in TeamMember.query.filter_by(team_id=team.id).all()
-    ]
+    data["members"] = [_team_member_payload(member) for member in TeamMember.query.filter_by(team_id=team.id).all()]
     topic_links = TeamTopic.query.filter_by(team_id=team.id, is_active=True).all()
     data["topics"] = [Topic.query.get(link.topic_id).to_dict() for link in topic_links if Topic.query.get(link.topic_id)]
     data["experiments"] = [
@@ -200,21 +206,43 @@ def upsert_team_member(team_id):
     actor = current_user()
     if not can_manage_team(actor, team_id):
         raise APIError("FORBIDDEN", "Team management permission is required.", 403)
+    team = Team.query.get_or_404(team_id)
     data = get_json()
     require_fields(data, ["user_id"])
-    User.query.get_or_404(data["user_id"])
-    member = TeamMember.query.filter_by(team_id=team_id, user_id=data["user_id"]).first()
+    user = User.query.get_or_404(int(data["user_id"]))
+    if user.status == "deleted":
+        raise APIError("INVALID_USER", "Deleted users cannot join a team.", 422)
+
+    member = TeamMember.query.filter_by(team_id=team_id, user_id=user.id).first()
+    role = data.get("role", member.role if member else "member")
+    if role not in VALID_TEAM_ROLES:
+        raise APIError("INVALID_ROLE", "Invalid team role.", 422)
     if not member:
-        member = TeamMember(team_id=team_id, user_id=data["user_id"])
+        member = TeamMember(team_id=team_id, user_id=user.id)
     before = member.to_dict() if member.id else None
-    member.role = data.get("role", member.role or "member")
+    member.role = role
     db.session.add(member)
     db.session.flush()
-    chat = _get_or_create_team_chat(Team.query.get(team_id))
+    chat = _get_or_create_team_chat(team)
     _sync_chat_member(chat.id, member.user_id)
+
+    if member.role == "leader":
+        for experiment in TeamExperiment.query.filter_by(team_id=team.id, is_deleted=False).all():
+            experiment_member = ExperimentMember.query.filter_by(
+                experiment_id=experiment.id, user_id=member.user_id
+            ).first()
+            if not experiment_member:
+                db.session.add(
+                    ExperimentMember(experiment_id=experiment.id, user_id=member.user_id, role="manager")
+                )
+            elif experiment_member.role != "manager":
+                experiment_member.role = "manager"
+            experiment_chat = _get_or_create_experiment_chat(experiment)
+            _sync_chat_member(experiment_chat.id, member.user_id)
+
     audit("upsert_team_member", member, before=before, after=member.to_dict(), actor_id=actor.id)
     db.session.commit()
-    return ok(member.to_dict())
+    return ok(_team_member_payload(member))
 
 
 @bp.delete("/<int:team_id>/members/<int:user_id>")
@@ -223,8 +251,19 @@ def remove_team_member(team_id, user_id):
     actor = current_user()
     if not can_manage_team(actor, team_id):
         raise APIError("FORBIDDEN", "Team management permission is required.", 403)
+    team = Team.query.get_or_404(team_id)
+    if team.creator_id == user_id:
+        raise APIError("CREATOR_REQUIRED", "Team creator cannot be removed from the team.", 409)
     member = TeamMember.query.filter_by(team_id=team_id, user_id=user_id).first_or_404()
     before = member.to_dict()
+    team_chat = Chat.query.filter_by(chat_type="team", team_id=team_id).first()
+    if team_chat:
+        ChatMember.query.filter_by(chat_id=team_chat.id, user_id=user_id).delete()
+    for experiment in TeamExperiment.query.filter_by(team_id=team_id, is_deleted=False).all():
+        ExperimentMember.query.filter_by(experiment_id=experiment.id, user_id=user_id).delete()
+        experiment_chat = Chat.query.filter_by(chat_type="experiment", experiment_id=experiment.id).first()
+        if experiment_chat:
+            ChatMember.query.filter_by(chat_id=experiment_chat.id, user_id=user_id).delete()
     db.session.delete(member)
     audit("remove_team_member", member, before=before, actor_id=actor.id)
     db.session.commit()
