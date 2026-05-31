@@ -27,6 +27,32 @@
   background: var(--bg);
 }
 
+:root[data-theme='dark'] {
+  --bg: #0f1218;
+  --bg-soft: #151a23;
+  --surface: #1b2230;
+  --surface-hover: #242c3a;
+  --line: #303948;
+  --line-blue: #1d4ed8;
+  --text: #f3f7fb;
+  --body: #d6dde8;
+  --muted: #9aa5b5;
+  --faint: #7f8a9a;
+  --primary: #60a5fa;
+  --primary-dark: #93c5fd;
+  --primary-soft: rgba(96, 165, 250, 0.18);
+  --teal: #5eead4;
+  --teal-soft: rgba(45, 212, 191, 0.14);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.14);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  --small-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -102,6 +128,12 @@ a {
   gap: 34px;
   color: var(--text);
   font-weight: 650;
+}
+
+.public-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .public-nav a.router-link-active {
@@ -202,6 +234,11 @@ a {
 .btn.ghost {
   background: transparent;
   border-color: var(--line);
+}
+
+.theme-toggle {
+  width: 40px;
+  padding: 0;
 }
 
 .lab-visual {
@@ -683,6 +720,13 @@ a {
   background: var(--bg);
 }
 
+.login-actions {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+}
+
 .login-card {
   width: min(420px, 100%);
   padding: 32px;
@@ -1077,4 +1121,115 @@ a {
     left: 20px;
     top: 0;
   }
+}
+
+:root[data-theme='dark'] .public-shell {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.1), transparent 26%),
+    var(--bg);
+}
+
+:root[data-theme='dark'] .public-header,
+:root[data-theme='dark'] .topbar {
+  background: rgba(15, 18, 24, 0.86);
+}
+
+:root[data-theme='dark'] .hero-label,
+:root[data-theme='dark'] .mock-window,
+:root[data-theme='dark'] .floating-panel,
+:root[data-theme='dark'] .mock-card,
+:root[data-theme='dark'] .card,
+:root[data-theme='dark'] .sidebar,
+:root[data-theme='dark'] .welcome,
+:root[data-theme='dark'] .login-card,
+:root[data-theme='dark'] .search,
+:root[data-theme='dark'] .input,
+:root[data-theme='dark'] .select,
+:root[data-theme='dark'] .textarea,
+:root[data-theme='dark'] .phase-card,
+:root[data-theme='dark'] .step-card,
+:root[data-theme='dark'] .conversation,
+:root[data-theme='dark'] .calendar-grid,
+:root[data-theme='dark'] .pill-tab,
+:root[data-theme='dark'] .chat-layout,
+:root[data-theme='dark'] .conversation-list {
+  background: var(--surface);
+}
+
+:root[data-theme='dark'] .input,
+:root[data-theme='dark'] .select,
+:root[data-theme='dark'] .textarea {
+  color: var(--body);
+}
+
+:root[data-theme='dark'] .table th,
+:root[data-theme='dark'] .composer,
+:root[data-theme='dark'] .sidebar-note {
+  background: var(--bg-soft);
+}
+
+:root[data-theme='dark'] .table td,
+:root[data-theme='dark'] .calendar-grid > div,
+:root[data-theme='dark'] .topbar,
+:root[data-theme='dark'] .public-header,
+:root[data-theme='dark'] .composer,
+:root[data-theme='dark'] .conversation-list {
+  border-color: var(--line);
+}
+
+:root[data-theme='dark'] .badge,
+:root[data-theme='dark'] .btn:not(.primary):not(.danger) {
+  color: var(--body);
+  background: var(--bg-soft);
+}
+
+:root[data-theme='dark'] .btn.outline,
+:root[data-theme='dark'] .btn.ghost {
+  color: var(--primary);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .badge.primary,
+:root[data-theme='dark'] .status-working,
+:root[data-theme='dark'] .status-doing,
+:root[data-theme='dark'] .nav-item.router-link-active,
+:root[data-theme='dark'] .stat-icon,
+:root[data-theme='dark'] .icon-tile,
+:root[data-theme='dark'] .number-dot,
+:root[data-theme='dark'] .upload-zone,
+:root[data-theme='dark'] .ppt-row.current {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+:root[data-theme='dark'] .status-ramping,
+:root[data-theme='dark'] .status-pending,
+:root[data-theme='dark'] .status-todo {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+:root[data-theme='dark'] .status-completed,
+:root[data-theme='dark'] .status-done,
+:root[data-theme='dark'] .status-approved,
+:root[data-theme='dark'] .status-active,
+:root[data-theme='dark'] .status-open {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+:root[data-theme='dark'] .status-abandoned,
+:root[data-theme='dark'] .status-ended,
+:root[data-theme='dark'] .status-archived {
+  color: var(--muted);
+  background: var(--surface-hover);
+}
+
+:root[data-theme='dark'] .status-rejected,
+:root[data-theme='dark'] .status-cancelled,
+:root[data-theme='dark'] .status-disabled,
+:root[data-theme='dark'] .status-deleted,
+:root[data-theme='dark'] .btn.danger {
+  color: var(--danger);
+  background: var(--danger-soft);
 }

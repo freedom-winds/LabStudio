@@ -18,6 +18,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authState, loadMe, logout } from '../../stores/auth'
 import { humanRole } from '../../data/formatters'
+import ThemeToggle from '../ui/ThemeToggle.vue'
 
 const router = useRouter()
 
@@ -69,6 +70,7 @@ async function handleLogout() {
           <span>搜索实验、队伍、文档、公告等</span>
         </div>
         <div class="top-actions">
+          <ThemeToggle />
           <span class="btn ghost"><Bell :size="18" :stroke-width="1.75" /></span>
           <span class="badge primary">{{ roleName }}</span>
           <RouterLink class="btn ghost" to="/app/password">

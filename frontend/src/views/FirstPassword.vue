@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { FlaskConical } from 'lucide-vue-next'
 import { http } from '../api/client'
+import ThemeToggle from '../components/ui/ThemeToggle.vue'
 
 const router = useRouter()
 const password = ref('')
@@ -26,6 +27,7 @@ async function submit() {
 
 <template>
   <main class="login-page">
+    <div class="login-actions"><ThemeToggle /></div>
     <form class="login-card" @submit.prevent="submit">
       <div class="brand">
         <span class="brand-mark"><FlaskConical :size="26" :stroke-width="1.75" /></span>
