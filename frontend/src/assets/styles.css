@@ -476,9 +476,12 @@ a {
 }
 
 .top-actions {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .content {

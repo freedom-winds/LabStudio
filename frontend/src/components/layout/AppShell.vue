@@ -46,6 +46,10 @@ async function handleLogout() {
   await logout()
   router.replace('/login')
 }
+
+function openChangePassword() {
+  router.push('/app/password')
+}
 </script>
 
 <template>
@@ -73,10 +77,10 @@ async function handleLogout() {
           <ThemeToggle />
           <span class="btn ghost"><Bell :size="18" :stroke-width="1.75" /></span>
           <span class="badge primary">{{ roleName }}</span>
-          <RouterLink class="btn ghost" to="/app/password">
+          <button class="btn ghost" type="button" @click="openChangePassword">
             <KeyRound :size="18" :stroke-width="1.75" />
             改密
-          </RouterLink>
+          </button>
           <span class="avatar">{{ userName.slice(0, 1) }}</span>
           <button class="btn ghost" @click="handleLogout">
             <LogOut :size="18" :stroke-width="1.75" />
