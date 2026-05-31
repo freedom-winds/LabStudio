@@ -1,5 +1,5 @@
 <script setup>
-import { MessageCircle, Plus, Trash2 } from 'lucide-vue-next'
+import { MessageCircle, Plus, Trash2, X } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
@@ -16,13 +16,19 @@ const selectedTopic = ref('')
 
 async function load() {
   team.value = await http.get(`/api/teams/${route.params.id}`)
-  topics.value = (await http.get(`/api/topics?year_id=${team.value.year_id}`)).items
+  topics.value = (await http.get(`/api/topics?year_id=${team.value.year_id}`)).items.filter((topic) => topic.status === 'active')
 }
 
 async function addTopic() {
   const ids = new Set(team.value.topics.map((item) => item.id))
   if (selectedTopic.value) ids.add(Number(selectedTopic.value))
   await http.post(`/api/teams/${team.value.id}/topics`, { topic_ids: [...ids] })
+  await load()
+}
+
+async function removeTopic(topic) {
+  const topicIds = team.value.topics.filter((item) => item.id !== topic.id).map((item) => item.id)
+  await http.post(`/api/teams/${team.value.id}/topics`, { topic_ids: topicIds })
   await load()
 }
 
@@ -56,17 +62,23 @@ onMounted(load)
 
       <section class="card pad" style="margin-bottom: 24px">
         <div class="section-title">
-          <div><h3>关联题目</h3><p>新增题目后会生成独立队伍实验实例。</p></div>
+          <div><h3>题目划归</h3><p>从所属年份的题目库中选择，划归后生成队伍实验实例。</p></div>
           <div style="display: flex; gap: 12px">
             <select v-model="selectedTopic" class="select" style="width: 260px">
               <option value="">选择题目</option>
               <option v-for="topic in topics" :key="topic.id" :value="topic.id">{{ topic.title }}</option>
             </select>
-            <button class="btn primary" @click="addTopic"><Plus :size="18" />添加题目</button>
+            <button class="btn primary" @click="addTopic"><Plus :size="18" />划归题目</button>
           </div>
         </div>
         <div class="badge-row">
-          <span v-for="topic in team.topics" :key="topic.id" class="badge primary">{{ topic.title }}</span>
+          <span v-for="topic in team.topics" :key="topic.id" class="badge primary">
+            {{ topic.title }}
+            <button class="btn ghost" style="padding: 2px 4px; min-height: auto" title="取消划归" @click="removeTopic(topic)">
+              <X :size="14" />
+            </button>
+          </span>
+          <span v-if="!team.topics.length" class="badge">暂无划归题目</span>
         </div>
       </section>
 

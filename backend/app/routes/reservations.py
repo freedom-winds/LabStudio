@@ -8,21 +8,35 @@ from ..utils import APIError, audit, get_json, ok, paginate, require_fields
 bp = Blueprint("reservations", __name__)
 
 
+def _user_summary(user_id: int | None) -> dict | None:
+    if not user_id:
+        return None
+    user = User.query.get(user_id)
+    if not user:
+        return None
+    return {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "account_type": user.account_type,
+    }
+
+
+def _serialize_reservation(reservation: Reservation) -> dict:
+    data = reservation.to_dict()
+    data["applicant"] = _user_summary(reservation.applicant_id)
+    data["duty_teacher"] = _user_summary(reservation.duty_teacher_id)
+    data["approvals"] = [
+        {**approval.to_dict(), "teacher": _user_summary(approval.teacher_id)}
+        for approval in ReservationApproval.query.filter_by(reservation_id=reservation.id)
+        .order_by(ReservationApproval.updated_at.desc())
+        .all()
+    ]
+    return data
+
+
 def _teachers():
     return User.query.filter_by(account_type="teacher", status="active").order_by(User.username.asc()).limit(2).all()
-
-
-def _recalculate(reservation: Reservation) -> None:
-    approvals = ReservationApproval.query.filter_by(reservation_id=reservation.id).all()
-    if any(item.status == "approved" for item in approvals):
-        approved = next(item for item in approvals if item.status == "approved")
-        reservation.final_status = "approved"
-        reservation.duty_teacher_id = approved.teacher_id
-    elif len(approvals) >= 2 and all(item.status == "rejected" for item in approvals):
-        reservation.final_status = "rejected"
-        reservation.duty_teacher_id = None
-    elif reservation.final_status != "cancelled":
-        reservation.final_status = "pending"
 
 
 @bp.get("")
@@ -34,7 +48,9 @@ def list_reservations():
         query = query.filter_by(applicant_id=actor.id)
     if request.args.get("status"):
         query = query.filter_by(final_status=request.args["status"])
-    return ok(paginate(query.order_by(Reservation.start_time.desc())))
+    data = paginate(query.order_by(Reservation.start_time.desc()))
+    data["items"] = [_serialize_reservation(Reservation.query.get(item["id"])) for item in data["items"]]
+    return ok(data)
 
 
 @bp.post("")
@@ -59,7 +75,7 @@ def create_reservation():
         db.session.add(ReservationApproval(reservation_id=reservation.id, teacher_id=teacher.id))
     audit("create_reservation", reservation, after=reservation.to_dict(), actor_id=actor.id)
     db.session.commit()
-    return ok(reservation.to_dict(), status=201)
+    return ok(_serialize_reservation(reservation), status=201)
 
 
 @bp.get("/<int:reservation_id>")
@@ -69,11 +85,7 @@ def get_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
     if not (is_teacher(actor) or reservation.applicant_id == actor.id):
         raise APIError("FORBIDDEN", "Reservation access is required.", 403)
-    data = reservation.to_dict()
-    data["approvals"] = [
-        item.to_dict() for item in ReservationApproval.query.filter_by(reservation_id=reservation.id).all()
-    ]
-    return ok(data)
+    return ok(_serialize_reservation(reservation))
 
 
 @bp.post("/<int:reservation_id>/cancel")
@@ -129,8 +141,9 @@ def approve_reservation(reservation_id):
     approval.status = data["status"]
     approval.comment = data.get("comment", "")
     db.session.add(approval)
-    _recalculate(reservation)
+    reservation.final_status = data["status"]
+    reservation.duty_teacher_id = actor.id if data["status"] == "approved" else None
     db.session.add(reservation)
     audit("approve_reservation", reservation, before=before, after=reservation.to_dict(), actor_id=actor.id)
     db.session.commit()
-    return ok(reservation.to_dict())
+    return ok(_serialize_reservation(reservation))

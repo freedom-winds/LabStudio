@@ -67,6 +67,24 @@ def test_health_and_login(tmp_path):
     assert dashboard_data["overview"]["teams"] == 1
     assert dashboard_data["overview"]["experiments"] == 1
     assert dashboard_data["overview_details"]["teams"]["leaders"] == 1
+    reservation = client.post(
+        "/api/reservations",
+        json={
+            "start_time": "2026-05-31T09:00",
+            "end_time": "2026-05-31T11:00",
+            "purpose": "预约测试",
+        },
+        headers=headers,
+    )
+    assert reservation.status_code == 201
+    reservation_id = reservation.get_json()["data"]["id"]
+    rejected = client.post(
+        f"/api/reservations/{reservation_id}/approve",
+        json={"status": "rejected"},
+        headers=headers,
+    )
+    assert rejected.status_code == 200
+    assert rejected.get_json()["data"]["final_status"] == "rejected"
     chat = client.post("/api/chats", json={"user_id": student_id}, headers=headers)
     assert chat.status_code == 201
     chat_id = chat.get_json()["data"]["id"]

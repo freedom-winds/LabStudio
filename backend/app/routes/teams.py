@@ -242,7 +242,12 @@ def set_team_topics(team_id):
     topic_ids = set(int(item) for item in data.get("topic_ids", []))
 
     for link in TeamTopic.query.filter_by(team_id=team_id).all():
-        link.is_active = link.topic_id in topic_ids
+        should_be_active = link.topic_id in topic_ids
+        if link.is_active and not should_be_active:
+            experiment = TeamExperiment.query.filter_by(team_id=team_id, topic_id=link.topic_id, is_deleted=False).first()
+            if experiment:
+                experiment.soft_delete(actor.id, "Topic unassigned from team.")
+        link.is_active = should_be_active
     for topic_id in topic_ids:
         topic = Topic.query.filter_by(id=topic_id, year_id=team.year_id, is_deleted=False).first_or_404()
         link = TeamTopic.query.filter_by(team_id=team_id, topic_id=topic_id).first()

@@ -36,16 +36,16 @@ onMounted(async () => {
         <div class="floating-panel folder-panel"><FolderOpen :size="38" :stroke-width="1.75" /></div>
         <div class="floating-panel calendar-panel">
           <strong style="color: var(--text)">实验室日程</strong>
-          <div style="margin-top: 12px; color: var(--muted); line-height: 1.8">2024 年 5 月<br />预约 7 项</div>
+          <div style="margin-top: 12px; color: var(--muted); line-height: 1.8">预约记录<br />实时同步</div>
         </div>
         <div class="mock-window">
           <h3 style="margin: 0; color: var(--text)">欢迎回来，Lexy Lab</h3>
           <p style="margin: 8px 0 0; color: var(--muted)">探索实验室的最新动态</p>
           <div class="mock-grid">
-            <div class="mock-card"><FlaskConical color="#2563eb" /><strong>24</strong><span>实验项目</span></div>
-            <div class="mock-card"><CalendarDays color="#0f766e" /><strong>18</strong><span>实验计划</span></div>
-            <div class="mock-card"><Database color="#2563eb" /><strong>356</strong><span>数据集</span></div>
-            <div class="mock-card"><CalendarDays color="#d97706" /><strong>7</strong><span>预约</span></div>
+            <div class="mock-card"><FlaskConical color="#2563eb" /><strong>实时</strong><span>实验项目</span></div>
+            <div class="mock-card"><CalendarDays color="#0f766e" /><strong>同步</strong><span>实验计划</span></div>
+            <div class="mock-card"><Database color="#2563eb" /><strong>归档</strong><span>数据集</span></div>
+            <div class="mock-card"><CalendarDays color="#d97706" /><strong>实时</strong><span>预约</span></div>
           </div>
           <div class="card-grid three" style="grid-template-columns: 1fr 1fr; margin-top: 22px">
             <div class="card pad">
