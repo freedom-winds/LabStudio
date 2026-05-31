@@ -60,18 +60,23 @@ def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> Tea
         )
         db.session.add(experiment)
         db.session.flush()
-        chat = _get_or_create_experiment_chat(experiment)
-        for member in TeamMember.query.filter_by(team_id=team.id).all():
-            role = "manager" if member.role == "leader" else "participant"
-            if not ExperimentMember.query.filter_by(experiment_id=experiment.id, user_id=member.user_id).first():
-                db.session.add(ExperimentMember(experiment_id=experiment.id, user_id=member.user_id, role=role))
-            _sync_chat_member(chat.id, member.user_id)
         audit("create_team_experiment", experiment, after=experiment.to_dict(), actor_id=actor_id)
     elif experiment.is_deleted:
         experiment.is_deleted = False
         experiment.deleted_by = None
         experiment.deleted_at = None
         experiment.delete_reason = None
+    chat = _get_or_create_experiment_chat(experiment)
+    member_roles = {team.creator_id: "manager", actor_id: "manager"}
+    for member in TeamMember.query.filter_by(team_id=team.id).all():
+        member_roles[member.user_id] = "manager" if member.role == "leader" else "participant"
+    for user_id, role in member_roles.items():
+        existing = ExperimentMember.query.filter_by(experiment_id=experiment.id, user_id=user_id).first()
+        if not existing:
+            db.session.add(ExperimentMember(experiment_id=experiment.id, user_id=user_id, role=role))
+        elif existing.role != "manager" and role == "manager":
+            existing.role = "manager"
+        _sync_chat_member(chat.id, user_id)
     return experiment
 
 
@@ -109,9 +114,13 @@ def create_team():
     db.session.flush()
     chat = _get_or_create_team_chat(team)
 
+    members_by_user = {actor.id: "leader"}
     for member_data in data.get("members", []):
         user_id = int(member_data["user_id"])
         role = member_data.get("role", "member")
+        members_by_user[user_id] = "leader" if user_id == actor.id else role
+
+    for user_id, role in members_by_user.items():
         db.session.add(TeamMember(team_id=team.id, user_id=user_id, role=role))
         _sync_chat_member(chat.id, user_id)
 

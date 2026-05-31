@@ -44,6 +44,29 @@ def test_health_and_login(tmp_path):
     dashboard = client.get("/api/dashboard", headers={"Authorization": f"Bearer {token}"})
     assert dashboard.status_code == 200
     headers = {"Authorization": f"Bearer {token}"}
+    year = client.post("/api/years", json={"name": "2026年", "year_number": 2026}, headers=headers)
+    assert year.status_code == 201
+    year_id = year.get_json()["data"]["id"]
+    topic = client.post("/api/topics", json={"year_id": year_id, "title": "材料表征实验"}, headers=headers)
+    assert topic.status_code == 201
+    topic_id = topic.get_json()["data"]["id"]
+    team = client.post("/api/teams", json={"year_id": year_id, "name": "先进材料组"}, headers=headers)
+    assert team.status_code == 201
+    team_id = team.get_json()["data"]["id"]
+    experiment = client.post(
+        "/api/experiments",
+        json={"team_id": team_id, "topic_id": topic_id, "name": "材料表征实验"},
+        headers=headers,
+    )
+    assert experiment.status_code == 201
+    experiments = client.get("/api/experiments", headers=headers)
+    assert experiments.status_code == 200
+    assert experiments.get_json()["data"]["total"] == 1
+    dashboard = client.get("/api/dashboard", headers=headers)
+    dashboard_data = dashboard.get_json()["data"]
+    assert dashboard_data["overview"]["teams"] == 1
+    assert dashboard_data["overview"]["experiments"] == 1
+    assert dashboard_data["overview_details"]["teams"]["leaders"] == 1
     chat = client.post("/api/chats", json={"user_id": student_id}, headers=headers)
     assert chat.status_code == 201
     chat_id = chat.get_json()["data"]["id"]

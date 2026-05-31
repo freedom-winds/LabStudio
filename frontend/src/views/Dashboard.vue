@@ -1,14 +1,29 @@
 <script setup>
 import { Bell, CalendarDays, FlaskConical, MessageCircle, Users } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import StatCard from '../components/ui/StatCard.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
-import { authState } from '../stores/auth'
 import { formatDate, humanRole } from '../data/formatters'
 
 const dashboard = ref(null)
+const teamMeta = computed(() => {
+  const teams = dashboard.value?.overview_details?.teams || {}
+  return `负责人 ${teams.leaders || 0}  成员 ${teams.members || 0}`
+})
+const experimentMeta = computed(() => {
+  const experiments = dashboard.value?.overview_details?.experiments || {}
+  return `进行中 ${experiments.working || 0}  已完成 ${experiments.completed || 0}`
+})
+const reservationMeta = computed(() => {
+  const reservations = dashboard.value?.overview_details?.reservations || {}
+  return `待审核 ${reservations.pending || 0}  已通过 ${reservations.approved || 0}`
+})
+const messageMeta = computed(() => {
+  const messages = dashboard.value?.overview_details?.messages || {}
+  return `未读消息 ${messages.unread_messages || 0}  系统通知 ${messages.unread_notifications || 0}`
+})
 
 onMounted(async () => {
   dashboard.value = await http.get('/api/dashboard')
@@ -24,7 +39,7 @@ onMounted(async () => {
           <h1>{{ dashboard.user.real_name }}，上午好！</h1>
           <div class="badge-row">
             <span class="badge status-pending">{{ humanRole(dashboard.user.account_type) }}</span>
-            <span class="badge primary">当前年份 2024年</span>
+            <span class="badge primary">当前年份 {{ dashboard.current_year?.name || '未设置' }}</span>
           </div>
         </div>
       </div>
@@ -32,16 +47,16 @@ onMounted(async () => {
         <span class="stat-icon"><Bell :size="22" :stroke-width="1.75" /></span>
         <div>
           <strong style="color: var(--text)">你有 {{ dashboard.overview.unread_notifications }} 条未读通知</strong>
-          <div style="color: var(--muted); margin-top: 6px">点击查看 latest 通知</div>
+          <div style="color: var(--muted); margin-top: 6px">点击查看最新通知</div>
         </div>
       </div>
     </section>
 
     <div v-if="dashboard" class="card-grid" style="margin-top: 24px">
-      <StatCard title="我的队伍" :value="dashboard.overview.teams" meta="负责人 2  成员 18" :icon="Users" />
-      <StatCard title="我的实验" :value="dashboard.overview.experiments" meta="进行中 12  已完成 12" :icon="FlaskConical" />
-      <StatCard title="待处理预约" :value="dashboard.overview.pending_reservations" meta="待审核 5  待确认 2" :icon="CalendarDays" />
-      <StatCard title="未读消息" :value="dashboard.overview.unread_messages" meta="@我的 2  系统通知 4" :icon="MessageCircle" />
+      <StatCard title="我的队伍" :value="dashboard.overview.teams" :meta="teamMeta" :icon="Users" />
+      <StatCard title="我的实验" :value="dashboard.overview.experiments" :meta="experimentMeta" :icon="FlaskConical" />
+      <StatCard title="待处理预约" :value="dashboard.overview.pending_reservations" :meta="reservationMeta" :icon="CalendarDays" />
+      <StatCard title="未读消息" :value="dashboard.overview.unread_messages" :meta="messageMeta" :icon="MessageCircle" />
     </div>
 
     <section v-if="dashboard" class="layout-grid">

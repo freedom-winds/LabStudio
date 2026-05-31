@@ -83,6 +83,8 @@ def can_manage_team(user: User, team_id: int) -> bool:
     team = Team.query.get(team_id)
     if not team:
         return False
+    if team.creator_id == user.id:
+        return True
     if can_manage_year(user, team.year_id):
         return True
     member = TeamMember.query.filter_by(team_id=team_id, user_id=user.id, role="leader").first()
