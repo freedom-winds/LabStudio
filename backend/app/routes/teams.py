@@ -15,6 +15,7 @@ from ..models import (
 )
 from ..security import can_manage_team, current_user, is_admin, is_teacher, login_required
 from ..utils import APIError, audit, get_json, ok, paginate, require_fields, update_model
+from ..workspace import ensure_default_experiment_folders
 
 bp = Blueprint("teams", __name__)
 
@@ -57,6 +58,7 @@ def _team_member_payload(member: TeamMember) -> dict:
 
 def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> TeamExperiment:
     experiment = TeamExperiment.query.filter_by(team_id=team.id, topic_id=topic.id).first()
+    should_ensure_folders = False
     if not experiment:
         experiment = TeamExperiment(
             year_id=team.year_id,
@@ -68,11 +70,13 @@ def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> Tea
         db.session.add(experiment)
         db.session.flush()
         audit("create_team_experiment", experiment, after=experiment.to_dict(), actor_id=actor_id)
+        should_ensure_folders = True
     elif experiment.is_deleted:
         experiment.is_deleted = False
         experiment.deleted_by = None
         experiment.deleted_at = None
         experiment.delete_reason = None
+        should_ensure_folders = True
     chat = _get_or_create_experiment_chat(experiment)
     member_roles = {team.creator_id: "manager", actor_id: "manager"}
     for member in TeamMember.query.filter_by(team_id=team.id).all():
@@ -84,6 +88,8 @@ def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> Tea
         elif existing.role != "manager" and role == "manager":
             existing.role = "manager"
         _sync_chat_member(chat.id, user_id)
+    if should_ensure_folders:
+        ensure_default_experiment_folders(experiment.id, actor_id)
     return experiment
 
 

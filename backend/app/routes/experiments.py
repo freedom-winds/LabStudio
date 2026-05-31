@@ -22,6 +22,7 @@ from ..models import (
 )
 from ..security import can_manage_experiment, can_manage_team, can_view_experiment, current_user, is_admin, login_required
 from ..utils import APIError, audit, get_json, ok, paginate, require_fields, update_model
+from ..workspace import ensure_default_experiment_folders
 
 bp = Blueprint("experiments", __name__)
 
@@ -167,6 +168,7 @@ def create_experiment():
         created = True
 
     _sync_experiment_members(experiment, actor.id)
+    ensure_default_experiment_folders(experiment.id, actor.id)
     audit(
         "create_experiment" if created else "reuse_experiment",
         experiment,

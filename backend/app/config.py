@@ -12,4 +12,5 @@ class Config:
     JSON_AS_ASCII = False
     MAX_CONTENT_LENGTH = 1024 * 1024 * 1024
     UPLOAD_ROOT = Path(os.getenv("UPLOAD_ROOT", BASE_DIR / "uploads"))
+    FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", BASE_DIR.parent / "frontend" / "dist"))
     TOKEN_EXPIRE_DAYS = int(os.getenv("TOKEN_EXPIRE_DAYS", "14"))

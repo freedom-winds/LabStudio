@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
 from .config import Config
@@ -29,6 +29,15 @@ def create_app(config_class=Config):
 
     @app.errorhandler(404)
     def handle_404(_error):
+        frontend_dist = Path(app.config["FRONTEND_DIST"])
+        is_api_path = request.path == "/api" or request.path.startswith("/api/")
+        if request.method == "GET" and not is_api_path and frontend_dist.joinpath("index.html").is_file():
+            requested = request.path.lstrip("/")
+            if requested:
+                asset = frontend_dist.joinpath(requested)
+                if asset.is_file():
+                    return send_from_directory(frontend_dist, requested)
+            return send_from_directory(frontend_dist, "index.html")
         return fail("NOT_FOUND", "Resource not found.", 404)
 
     @app.errorhandler(500)

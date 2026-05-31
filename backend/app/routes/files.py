@@ -6,11 +6,9 @@ from ..extensions import db
 from ..models import FileAsset, Phase, PresentationVersion, Step, StepFile, User
 from ..security import can_manage_experiment, can_view_experiment, current_user, login_required
 from ..utils import APIError, audit, create_step_file, get_json, ok, save_upload, validate_upload
+from ..workspace import FOLDER_FILE_OWNER, FOLDER_OWNER, ROOT_FILE_OWNER
 
 bp = Blueprint("files", __name__)
-FOLDER_OWNER = "experiment_workspace_folder"
-ROOT_FILE_OWNER = "experiment_workspace_file_root"
-FOLDER_FILE_OWNER = "experiment_workspace_file"
 
 
 def _experiment_id_from_step(step_id: int) -> int:
