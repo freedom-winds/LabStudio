@@ -1,0 +1,148 @@
+# =========================
+# System files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Dependencies
+# =========================
+node_modules/
+vendor/
+
+# =========================
+# Frontend build output
+# =========================
+dist/
+build/
+.next/
+.nuxt/
+.output/
+.cache/
+.parcel-cache/
+vite.config.*.timestamp-*
+
+# =========================
+# TypeScript / JS cache
+# =========================
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Flask / Django
+instance/
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# =========================
+# Uploads / Runtime files
+# =========================
+uploads/
+tmp/
+temp/
+runtime/
+storage/
+*.pid
+
+# =========================
+# Database / backups
+# =========================
+*.db
+*.sqlite
+*.sql
+*.dump
+*.bak
+*.backup
+
+# =========================
+# Docker local data
+# =========================
+.docker/
+docker-data/
+mysql-data/
+postgres-data/
+redis-data/
+
+# =========================
+# Test / coverage
+# =========================
+coverage/
+test-results/
+playwright-report/
+
+# =========================
+# Package managers
+# =========================
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# =========================
+# Lock files
+# 通常保留 lock 文件；如项目明确不需要，再手动忽略
+# =========================
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
+# poetry.lock
+
+# =========================
+# Secrets / Certificates
+# =========================
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
