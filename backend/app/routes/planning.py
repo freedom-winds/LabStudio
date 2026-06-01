@@ -2,10 +2,13 @@ from flask import Blueprint
 
 from ..extensions import db
 from ..models import Phase, Step
-from ..security import can_manage_experiment, can_view_experiment, current_user, login_required
+from ..security import can_view_experiment, current_user, login_required
 from ..utils import APIError, audit, get_json, ok, require_fields, update_model
 
 bp = Blueprint("planning", __name__)
+
+# Plan maintenance is an in-experiment activity: any experiment member may edit it.
+can_manage_experiment = can_view_experiment
 
 
 def _phase_or_404(phase_id: int) -> Phase:

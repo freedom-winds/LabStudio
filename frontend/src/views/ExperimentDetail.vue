@@ -5,6 +5,7 @@ import { Download, FileText, FlaskConical, Folder, FolderPlus, MessageCircle, Pe
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
+import { authState } from '../stores/auth'
 import { fileSize, formatDate, humanRole, shortDate } from '../data/formatters'
 
 const route = useRoute()
@@ -48,6 +49,7 @@ const availableExperimentMembers = computed(() => {
   const memberIds = new Set((experiment.value?.members || []).map((member) => member.user_id))
   return teamMembers.value.filter((member) => !memberIds.has(member.user_id))
 })
+const canManageExperiment = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
 
 async function load() {
   experiment.value = await http.get(`/api/experiments/${route.params.id}`)
@@ -306,13 +308,13 @@ onMounted(load)
         </div>
         <div style="display: flex; gap: 12px; flex-wrap: wrap">
           <RouterLink to="/app/chats" class="btn outline"><MessageCircle :size="18" />实验群聊</RouterLink>
-          <select class="select" style="width: 128px" :value="experiment.status" @change="setExperimentStatus($event.target.value)">
+          <select v-if="canManageExperiment" class="select" style="width: 128px" :value="experiment.status" @change="setExperimentStatus($event.target.value)">
             <option value="working">工作中</option>
             <option value="ramping">磨合中</option>
             <option value="completed">完成</option>
             <option value="abandoned">放弃</option>
           </select>
-          <button class="btn danger" @click="deleteExperiment"><Trash2 :size="16" />删除实验</button>
+          <button v-if="canManageExperiment" class="btn danger" @click="deleteExperiment"><Trash2 :size="16" />删除实验</button>
         </div>
       </section>
 
@@ -537,7 +539,7 @@ onMounted(load)
             <h3>实验成员</h3>
             <p>从所属队伍学生中选择，设置实验管理员、参与者或观察者。</p>
           </div>
-          <div class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 140px auto">
+          <div v-if="canManageExperiment" class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 140px auto">
             <select v-model="experimentMemberForm.user_id" class="select">
               <option value="">选择队伍学生</option>
               <option v-for="member in availableExperimentMembers" :key="member.id" :value="member.user_id">
@@ -566,12 +568,13 @@ onMounted(load)
               </div>
             </div>
             <div class="badge-row" style="margin-top: 14px">
-              <select class="select" style="width: 148px" :value="member.role" @change="setExperimentMemberRole(member, $event.target.value)">
+              <select v-if="canManageExperiment" class="select" style="width: 148px" :value="member.role" @change="setExperimentMemberRole(member, $event.target.value)">
                 <option value="manager">实验管理员</option>
                 <option value="participant">实验参与者</option>
                 <option value="observer">实验观察者</option>
               </select>
-              <button class="btn danger" @click="removeExperimentMember(member)">
+              <span v-else class="badge primary">{{ humanRole(member.role) }}</span>
+              <button v-if="canManageExperiment" class="btn danger" @click="removeExperimentMember(member)">
                 <Trash2 :size="16" />移出
               </button>
             </div>

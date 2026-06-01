@@ -66,6 +66,10 @@ def is_teacher(user: User) -> bool:
     return user.account_type in {"teacher", "admin"}
 
 
+def is_student(user: User) -> bool:
+    return user.account_type == "student"
+
+
 def has_year_role(user: User, year_id: int, role: str) -> bool:
     if is_admin(user):
         return True
@@ -74,12 +78,18 @@ def has_year_role(user: User, year_id: int, role: str) -> bool:
 
 
 def can_manage_year(user: User, year_id: int) -> bool:
-    return is_admin(user) or has_year_role(user, year_id, "year_admin")
+    if is_admin(user):
+        return True
+    if is_student(user):
+        return False
+    return has_year_role(user, year_id, "year_admin")
 
 
 def can_manage_team(user: User, team_id: int) -> bool:
     if is_admin(user):
         return True
+    if is_student(user):
+        return False
     team = Team.query.get(team_id)
     if not team:
         return False
@@ -100,6 +110,8 @@ def can_view_team(user: User, team_id: int) -> bool:
 def can_manage_experiment(user: User, experiment_id: int) -> bool:
     if is_admin(user):
         return True
+    if is_student(user):
+        return False
     experiment = TeamExperiment.query.get(experiment_id)
     if not experiment:
         return False

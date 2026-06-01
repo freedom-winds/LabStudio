@@ -15,6 +15,7 @@ const topics = ref([])
 const students = ref([])
 const selectedTopic = ref('')
 const memberForm = ref({ user_id: '', role: 'member' })
+const canManageTeam = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
 
 const availableStudents = computed(() => {
   const memberIds = new Set((team.value?.members || []).map((member) => member.user_id))
@@ -86,7 +87,7 @@ onMounted(load)
         <RouterLink class="btn outline" to="/app/chats">进入群聊</RouterLink>
       </section>
 
-      <section class="card pad" style="margin-bottom: 24px">
+      <section v-if="canManageTeam" class="card pad" style="margin-bottom: 24px">
         <div class="section-title">
           <div><h3>题目划归</h3><p>从所属年份的题目库中选择，划归后生成队伍实验实例。</p></div>
           <div style="display: flex; gap: 12px">
@@ -115,7 +116,7 @@ onMounted(load)
           <p style="color: var(--muted)">最新更新时间 {{ experiment.updated_at }}</p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
             <RouterLink class="btn outline" :to="`/app/experiments/${experiment.id}`">进入实验</RouterLink>
-            <button class="btn danger" @click="deleteExperiment(experiment)"><Trash2 :size="16" />删除</button>
+            <button v-if="canManageTeam" class="btn danger" @click="deleteExperiment(experiment)"><Trash2 :size="16" />删除</button>
           </div>
         </article>
       </section>
@@ -126,7 +127,7 @@ onMounted(load)
             <h3>队伍成员</h3>
             <p>将学生加入队伍，并设置队伍成员或领队身份。</p>
           </div>
-          <div class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 130px auto">
+          <div v-if="canManageTeam" class="form-grid" style="grid-template-columns: minmax(180px, 1fr) 130px auto">
             <select v-model="memberForm.user_id" class="select">
               <option value="">选择学生</option>
               <option v-for="student in availableStudents" :key="student.id" :value="student.id">
@@ -159,14 +160,15 @@ onMounted(load)
               </div>
             </div>
             <div class="badge-row" style="margin-top: 14px">
-              <select class="select" style="width: 132px" :value="member.role" @change="setTeamMemberRole(member, $event.target.value)">
+              <select v-if="canManageTeam" class="select" style="width: 132px" :value="member.role" @change="setTeamMemberRole(member, $event.target.value)">
                 <option value="member">队伍成员</option>
                 <option value="leader">队伍领队</option>
               </select>
+              <span v-else class="badge primary">{{ humanRole(member.role) }}</span>
               <button class="btn ghost" :disabled="member.user.id === authState.user?.id" @click="startPrivateChat(member.user)">
                 <MessageCircle :size="16" />私聊
               </button>
-              <button class="btn danger" :disabled="member.user_id === team.creator_id" @click="removeTeamMember(member)">
+              <button v-if="canManageTeam" class="btn danger" :disabled="member.user_id === team.creator_id" @click="removeTeamMember(member)">
                 <Trash2 :size="16" />移出
               </button>
             </div>

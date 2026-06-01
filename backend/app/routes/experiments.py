@@ -107,7 +107,7 @@ def list_experiments():
         query = query.filter_by(year_id=int(request.args["year_id"]))
     if not is_admin(user):
         managed_ids = [m.experiment_id for m in ExperimentMember.query.filter_by(user_id=user.id).all()]
-        team_ids = _visible_team_ids(user)
+        team_ids = set() if user.account_type == "student" else _visible_team_ids(user)
         filters = []
         if managed_ids:
             filters.append(TeamExperiment.id.in_(managed_ids))
