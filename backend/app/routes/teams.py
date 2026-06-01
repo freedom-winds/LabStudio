@@ -56,6 +56,14 @@ def _team_member_payload(member: TeamMember) -> dict:
     return {**member.to_dict(), "user": user.to_dict() if user else None}
 
 
+def _team_experiment_payload(experiment: TeamExperiment, user_id: int) -> dict:
+    data = experiment.to_dict()
+    membership = ExperimentMember.query.filter_by(experiment_id=experiment.id, user_id=user_id).first()
+    data["is_my_experiment"] = membership is not None
+    data["my_role"] = membership.role if membership else None
+    return data
+
+
 def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> TeamExperiment:
     experiment = TeamExperiment.query.filter_by(team_id=team.id, topic_id=topic.id).first()
     should_ensure_folders = False
@@ -154,15 +162,16 @@ def create_team():
 @bp.get("/<int:team_id>")
 @login_required()
 def get_team(team_id):
+    actor = current_user()
     team = Team.query.get_or_404(team_id)
-    if team.is_deleted and not is_admin(current_user()):
+    if team.is_deleted and not is_admin(actor):
         raise APIError("NOT_FOUND", "Resource not found.", 404)
     data = team.to_dict()
     data["members"] = [_team_member_payload(member) for member in TeamMember.query.filter_by(team_id=team.id).all()]
     topic_links = TeamTopic.query.filter_by(team_id=team.id, is_active=True).all()
     data["topics"] = [Topic.query.get(link.topic_id).to_dict() for link in topic_links if Topic.query.get(link.topic_id)]
     data["experiments"] = [
-        item.to_dict()
+        _team_experiment_payload(item, actor.id)
         for item in TeamExperiment.query.filter_by(team_id=team.id, is_deleted=False)
         .order_by(TeamExperiment.updated_at.desc())
         .all()

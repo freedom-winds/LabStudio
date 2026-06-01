@@ -12,6 +12,8 @@ const route = useRoute()
 const router = useRouter()
 const active = ref('overview')
 const experiment = ref(null)
+const accessDenied = ref(false)
+const loadError = ref('')
 const phases = ref([])
 const selectedPhaseId = ref(null)
 const selectedStepId = ref(null)
@@ -50,9 +52,28 @@ const availableExperimentMembers = computed(() => {
   return teamMembers.value.filter((member) => !memberIds.has(member.user_id))
 })
 const canManageExperiment = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
+const returnTarget = computed(() => (route.query.team_id ? `/app/teams/${route.query.team_id}` : '/app/experiments'))
+const returnText = computed(() => (route.query.team_id ? '返回队伍' : '返回实验列表'))
 
 async function load() {
-  experiment.value = await http.get(`/api/experiments/${route.params.id}`)
+  accessDenied.value = false
+  loadError.value = ''
+  try {
+    experiment.value = await http.get(`/api/experiments/${route.params.id}`)
+  } catch (err) {
+    experiment.value = null
+    phases.value = []
+    stepFiles.value = []
+    workspace.value = { current_folder: null, breadcrumbs: [], folders: [], files: [] }
+    presentations.value = []
+    proposals.value = []
+    if (err.status === 403) {
+      accessDenied.value = true
+      return
+    }
+    loadError.value = err.message || '加载实验失败'
+    return
+  }
   const teamDetail = await http.get(`/api/teams/${experiment.value.team_id}`).catch(() => null)
   teamMembers.value = (teamDetail?.members || []).filter(
     (member) => member.user?.account_type === 'student' && member.user?.status === 'active',
@@ -295,7 +316,30 @@ onMounted(load)
 
 <template>
   <AppShell>
-    <template v-if="experiment">
+    <section v-if="accessDenied" class="card pad">
+      <div class="section-title">
+        <div>
+          <h3>你不在该实验内</h3>
+          <p>该实验已归属于当前队伍，但你尚未被划归为该实验的参与者，因此不能查看实验计划、文件和成员内容。</p>
+        </div>
+        <RouterLink class="btn outline" :to="returnTarget">{{ returnText }}</RouterLink>
+      </div>
+      <div class="badge-row">
+        <span class="badge">可联系老师或实验管理员将你加入该实验</span>
+      </div>
+    </section>
+
+    <section v-else-if="loadError" class="card pad">
+      <div class="section-title">
+        <div>
+          <h3>实验加载失败</h3>
+          <p>{{ loadError }}</p>
+        </div>
+        <RouterLink class="btn outline" :to="returnTarget">{{ returnText }}</RouterLink>
+      </div>
+    </section>
+
+    <template v-else-if="experiment">
       <section class="card experiment-header">
         <span class="icon-tile"><FlaskConical :size="36" :stroke-width="1.75" /></span>
         <div>

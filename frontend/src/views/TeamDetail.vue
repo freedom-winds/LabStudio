@@ -16,6 +16,12 @@ const students = ref([])
 const selectedTopic = ref('')
 const memberForm = ref({ user_id: '', role: 'member' })
 const canManageTeam = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
+const sortedExperiments = computed(() =>
+  [...(team.value?.experiments || [])].sort((a, b) => {
+    if (a.is_my_experiment !== b.is_my_experiment) return a.is_my_experiment ? -1 : 1
+    return String(b.updated_at || '').localeCompare(String(a.updated_at || ''))
+  }),
+)
 
 const availableStudents = computed(() => {
   const memberIds = new Set((team.value?.members || []).map((member) => member.user_id))
@@ -110,12 +116,18 @@ onMounted(load)
       </section>
 
       <section class="card-grid three" style="margin-bottom: 24px">
-        <article v-for="experiment in team.experiments" :key="experiment.id" class="card pad">
+        <article v-for="experiment in sortedExperiments" :key="experiment.id" class="card pad">
           <StatusBadge :value="experiment.status" />
           <h3 style="margin-top: 16px">{{ experiment.name }}</h3>
+          <div v-if="experiment.is_my_experiment || !canManageTeam" class="badge-row" style="margin-bottom: 12px">
+            <span v-if="experiment.is_my_experiment" class="badge primary">
+              我参与 · {{ humanRole(experiment.my_role) }}
+            </span>
+            <span v-else-if="!canManageTeam" class="badge">未加入该实验</span>
+          </div>
           <p style="color: var(--muted)">最新更新时间 {{ experiment.updated_at }}</p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
-            <RouterLink class="btn outline" :to="`/app/experiments/${experiment.id}`">进入实验</RouterLink>
+            <RouterLink class="btn outline" :to="`/app/experiments/${experiment.id}?team_id=${team.id}`">进入实验</RouterLink>
             <button v-if="canManageTeam" class="btn danger" @click="deleteExperiment(experiment)"><Trash2 :size="16" />删除</button>
           </div>
         </article>
