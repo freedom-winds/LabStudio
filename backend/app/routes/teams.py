@@ -79,8 +79,8 @@ def _create_experiment_for_topic(team: Team, topic: Topic, actor_id: int) -> Tea
         should_ensure_folders = True
     chat = _get_or_create_experiment_chat(experiment)
     member_roles = {team.creator_id: "manager", actor_id: "manager"}
-    for member in TeamMember.query.filter_by(team_id=team.id).all():
-        member_roles[member.user_id] = "manager" if member.role == "leader" else "participant"
+    for member in TeamMember.query.filter_by(team_id=team.id, role="leader").all():
+        member_roles[member.user_id] = "manager"
     for user_id, role in member_roles.items():
         existing = ExperimentMember.query.filter_by(experiment_id=experiment.id, user_id=user_id).first()
         if not existing:

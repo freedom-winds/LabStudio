@@ -81,8 +81,8 @@ def _sync_experiment_members(experiment: TeamExperiment, actor_id: int) -> None:
     if team:
         member_roles[team.creator_id] = "manager"
     member_roles[actor_id] = "manager"
-    for member in TeamMember.query.filter_by(team_id=experiment.team_id).all():
-        member_roles[member.user_id] = "manager" if member.role == "leader" else "participant"
+    for member in TeamMember.query.filter_by(team_id=experiment.team_id, role="leader").all():
+        member_roles[member.user_id] = "manager"
 
     chat = _get_or_create_experiment_chat(experiment)
     for user_id, role in member_roles.items():
