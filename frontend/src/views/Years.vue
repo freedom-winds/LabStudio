@@ -1,12 +1,14 @@
 <script setup>
 import { CalendarPlus, Trash2 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
+import { authState } from '../stores/auth'
 import { formatDate } from '../data/formatters'
 
 const years = ref([])
+const isAdmin = computed(() => authState.user?.account_type === 'admin')
 const name = ref('2026 年度实验')
 const yearNumber = ref(2026)
 
@@ -36,12 +38,12 @@ onMounted(load)
         <h1>年份管理</h1>
         <p>按年度组织题目、队伍、实验实例、公告与成员身份。</p>
       </div>
-      <button class="btn primary" @click="createYear">
+      <button v-if="isAdmin" class="btn primary" @click="createYear">
         <CalendarPlus :size="18" :stroke-width="1.75" />
         新建年份
       </button>
     </div>
-    <section class="card form-card" style="margin-bottom: 24px">
+    <section v-if="isAdmin" class="card form-card" style="margin-bottom: 24px">
       <div class="form-grid" style="grid-template-columns: 1fr 180px auto">
         <input v-model="name" class="input" />
         <input v-model="yearNumber" class="input" type="number" />
@@ -61,7 +63,7 @@ onMounted(load)
             <td>{{ formatDate(year.created_at) }}</td>
             <td style="display: flex; gap: 8px">
               <RouterLink class="btn ghost" :to="`/app/years/${year.id}`">查看</RouterLink>
-              <button class="btn danger" @click="deleteYear(year)"><Trash2 :size="16" />删除</button>
+              <button v-if="isAdmin" class="btn danger" @click="deleteYear(year)"><Trash2 :size="16" />删除</button>
             </td>
           </tr>
         </tbody>

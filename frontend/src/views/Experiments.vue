@@ -1,12 +1,14 @@
 <script setup>
 import { FlaskConical, Trash2 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
+import { authState } from '../stores/auth'
 import { formatDate } from '../data/formatters'
 
 const experiments = ref([])
+const canManageExperiments = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
 
 async function load() {
   experiments.value = (await http.get('/api/experiments')).items
@@ -41,7 +43,7 @@ onMounted(load)
         <p style="color: var(--muted)">更新于 {{ formatDate(experiment.updated_at) }}</p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap">
           <RouterLink class="btn outline" :to="`/app/experiments/${experiment.id}`">进入实验</RouterLink>
-          <button class="btn danger" @click="deleteExperiment(experiment)"><Trash2 :size="16" />删除</button>
+          <button v-if="canManageExperiments" class="btn danger" @click="deleteExperiment(experiment)"><Trash2 :size="16" />删除</button>
         </div>
       </article>
       <article v-if="!experiments.length" class="card pad">

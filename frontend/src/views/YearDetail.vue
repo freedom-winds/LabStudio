@@ -1,13 +1,15 @@
 <script setup>
 import { Pencil, Plus, Trash2, X } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
+import { authState } from '../stores/auth'
 
 const route = useRoute()
 const year = ref(null)
+const canManageYear = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
 const topics = ref([])
 const teams = ref([])
 const editingTopicId = ref(null)
@@ -83,7 +85,7 @@ onMounted(load)
         <article class="card pad"><h3>实验数量</h3><div class="stat-value">{{ year.experiments_count }}</div></article>
         <article class="card pad"><h3>年度管理员</h3><div class="stat-value">{{ year.members.length }}</div></article>
       </div>
-      <section class="card form-card" style="margin-bottom: 24px">
+      <section v-if="canManageYear" class="card form-card" style="margin-bottom: 24px">
         <div class="section-title">
           <div>
             <h3>{{ editingTopicId ? '修改年份题目' : '添加年份题目' }}</h3>
@@ -116,8 +118,8 @@ onMounted(load)
               <span><strong style="color: var(--text)">{{ topic.title }}</strong><br />{{ topic.description }}</span>
               <div style="display: flex; gap: 8px; align-items: center">
                 <StatusBadge :value="topic.status" />
-                <button class="btn outline" @click="editTopic(topic)"><Pencil :size="16" />修改</button>
-                <button class="btn danger" @click="deleteTopic(topic)"><Trash2 :size="16" />删除</button>
+                <button v-if="canManageYear" class="btn outline" @click="editTopic(topic)"><Pencil :size="16" />修改</button>
+                <button v-if="canManageYear" class="btn danger" @click="deleteTopic(topic)"><Trash2 :size="16" />删除</button>
               </div>
             </div>
             <div v-if="!topics.length" class="timeline-item">

@@ -1,11 +1,13 @@
 <script setup>
 import { Plus, Trash2, Users } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import { http } from '../api/client'
+import { authState } from '../stores/auth'
 
 const teams = ref([])
+const canManageTeams = computed(() => ['teacher', 'admin'].includes(authState.user?.account_type))
 const years = ref([])
 const form = ref({ name: '先进材料科研组', year_id: '', description: '材料制备与性能表征方向。' })
 
@@ -36,12 +38,12 @@ onMounted(load)
         <h1>队伍管理</h1>
         <p>创建队伍、维护成员与关联实验题目。</p>
       </div>
-      <button class="btn primary" @click="createTeam">
+      <button v-if="canManageTeams" class="btn primary" @click="createTeam">
         <Plus :size="18" :stroke-width="1.75" />
         新建队伍
       </button>
     </div>
-    <section class="card form-card" style="margin-bottom: 24px">
+    <section v-if="canManageTeams" class="card form-card" style="margin-bottom: 24px">
       <div class="form-grid" style="grid-template-columns: 1fr 180px 1.4fr auto">
         <input v-model="form.name" class="input" />
         <select v-model="form.year_id" class="select">
@@ -63,7 +65,7 @@ onMounted(load)
         </div>
         <div style="display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap">
           <RouterLink class="btn outline" :to="`/app/teams/${team.id}`">进入队伍</RouterLink>
-          <button class="btn danger" @click="deleteTeam(team)"><Trash2 :size="16" />删除</button>
+          <button v-if="canManageTeams" class="btn danger" @click="deleteTeam(team)"><Trash2 :size="16" />删除</button>
         </div>
       </article>
     </section>
