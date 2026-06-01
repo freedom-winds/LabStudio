@@ -1,5 +1,6 @@
 <script setup>
 import {
+  ArrowLeft,
   Bell,
   CalendarDays,
   FlaskConical,
@@ -15,12 +16,13 @@ import {
   Wrench,
 } from 'lucide-vue-next'
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { authState, loadMe, logout } from '../../stores/auth'
 import { humanRole } from '../../data/formatters'
 import ThemeToggle from '../ui/ThemeToggle.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const nav = [
   { to: '/app', label: '工作台', icon: Home },
@@ -35,8 +37,10 @@ const nav = [
   { to: '/app/admin', label: '系统管理', icon: Settings },
 ]
 
+const mainNavPaths = new Set(nav.map((item) => item.to))
 const userName = computed(() => authState.user?.real_name || '用户')
 const roleName = computed(() => humanRole(authState.user?.account_type))
+const showBackButton = computed(() => route.path.startsWith('/app') && !mainNavPaths.has(route.path))
 
 onMounted(async () => {
   if (!authState.user) await loadMe().catch(() => router.replace('/login'))
@@ -49,6 +53,11 @@ async function handleLogout() {
 
 function openChangePassword() {
   router.push('/app/password')
+}
+
+function goBack() {
+  if (window.history.length > 1) router.back()
+  else router.push('/app')
 }
 </script>
 
@@ -69,9 +78,14 @@ function openChangePassword() {
     </aside>
     <section class="main-shell">
       <header class="topbar">
-        <div class="search">
-          <Search :size="18" :stroke-width="1.75" />
-          <span>搜索实验、队伍、文档、公告等</span>
+        <div class="topbar-left">
+          <button v-if="showBackButton" class="btn ghost back-button" type="button" title="返回上一界面" @click="goBack">
+            <ArrowLeft :size="18" :stroke-width="1.75" />
+          </button>
+          <div class="search">
+            <Search :size="18" :stroke-width="1.75" />
+            <span>搜索实验、队伍、文档、公告等</span>
+          </div>
         </div>
         <div class="top-actions">
           <ThemeToggle />

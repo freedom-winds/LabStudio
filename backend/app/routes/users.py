@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 
 from ..extensions import db
-from ..models import User
+from ..models import ChatMember, ExperimentMember, TeamMember, User
 from ..security import current_user, is_admin, is_teacher, login_required, require_admin
 from ..utils import APIError, audit, get_json, ok, paginate, require_fields, update_model, validate_username
 
@@ -10,6 +10,20 @@ bp = Blueprint("users", __name__)
 VALID_GENDERS = {"男", "女"}
 VALID_ACCOUNT_TYPES = {"student", "teacher", "admin"}
 VALID_STATUSES = {"active", "disabled", "deleted"}
+
+
+def _remove_user_assignments(user_id: int) -> dict:
+    team_member_ids = [row.id for row in TeamMember.query.filter_by(user_id=user_id).all()]
+    experiment_member_ids = [row.id for row in ExperimentMember.query.filter_by(user_id=user_id).all()]
+    chat_member_ids = [row.id for row in ChatMember.query.filter_by(user_id=user_id).all()]
+    TeamMember.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    ExperimentMember.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    ChatMember.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    return {
+        "removed_team_member_ids": team_member_ids,
+        "removed_experiment_member_ids": experiment_member_ids,
+        "removed_chat_member_ids": chat_member_ids,
+    }
 
 
 @bp.get("")
@@ -118,8 +132,9 @@ def delete_user(user_id):
     require_admin(actor)
     user = User.query.get_or_404(user_id)
     before = user.to_dict()
+    cleanup = _remove_user_assignments(user.id)
     user.soft_delete(actor.id, get_json().get("reason"))
     db.session.add(user)
-    audit("delete_user", user, before=before, after=user.to_dict(), actor_id=actor.id)
+    audit("delete_user", user, before=before, after={**user.to_dict(), **cleanup}, actor_id=actor.id)
     db.session.commit()
     return ok(user.to_dict())

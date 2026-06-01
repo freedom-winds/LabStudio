@@ -46,10 +46,44 @@ const router = createRouter({
   routes,
 })
 
+let routeLoadingTimer = null
+let routeLoadingElement = null
+
+function ensureRouteLoadingElement() {
+  if (routeLoadingElement) return routeLoadingElement
+  routeLoadingElement = document.createElement('div')
+  routeLoadingElement.className = 'route-loading-overlay'
+  routeLoadingElement.innerHTML = `
+    <div class="route-loading-panel" role="status" aria-live="polite">
+      <span class="route-loading-spinner"></span>
+      <span>加载中</span>
+    </div>
+  `
+  document.body.appendChild(routeLoadingElement)
+  return routeLoadingElement
+}
+
+function startRouteLoading() {
+  clearTimeout(routeLoadingTimer)
+  routeLoadingTimer = window.setTimeout(() => {
+    ensureRouteLoadingElement().classList.add('visible')
+  }, 150)
+}
+
+function stopRouteLoading() {
+  clearTimeout(routeLoadingTimer)
+  routeLoadingTimer = null
+  if (routeLoadingElement) routeLoadingElement.classList.remove('visible')
+}
+
 router.beforeEach((to) => {
+  startRouteLoading()
   if (to.meta.requiresAuth && !isAuthed()) return '/login'
   if (to.path === '/login' && isAuthed()) return '/app'
   return true
 })
+
+router.afterEach(stopRouteLoading)
+router.onError(stopRouteLoading)
 
 export default router
