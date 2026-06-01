@@ -17,9 +17,17 @@ const editingUserId = ref(null)
 const editForm = ref({ real_name: '', gender: '女', account_type: 'student', status: 'active' })
 const error = ref('')
 const isAdmin = computed(() => authState.user?.account_type === 'admin')
+const isTeacher = computed(() => authState.user?.account_type === 'teacher')
+const canCreateUser = computed(() => isAdmin.value || isTeacher.value)
+const adminTabs = computed(() =>
+  isAdmin.value
+    ? [['users', '用户管理'], ['permissions', '权限管理'], ['logs', '操作日志']]
+    : [['users', '其他用户']],
+)
 
 async function load() {
   error.value = ''
+  if (!isAdmin.value && active.value !== 'users') active.value = 'users'
   if (active.value === 'users') users.value = (await http.get('/api/users')).items
   if (active.value === 'logs') logs.value = (await http.get('/api/audit-logs')).items
 }
@@ -84,13 +92,13 @@ onMounted(load)
   <AppShell>
     <div class="page-title">
       <div>
-        <h1>系统管理</h1>
-        <p>用户、权限与操作日志管理。点击用户头像可发起私聊。</p>
+        <h1>{{ isAdmin ? '系统管理' : '其他用户' }}</h1>
+        <p>{{ isAdmin ? '用户、权限与操作日志管理。点击用户头像可发起私聊。' : '查看平台用户，点击用户头像可发起私聊。' }}</p>
       </div>
     </div>
     <div class="admin-tabs">
       <button
-        v-for="item in [['users','用户管理'],['permissions','权限管理'],['logs','操作日志']]"
+        v-for="item in adminTabs"
         :key="item[0]"
         class="pill-tab"
         :class="{ active: active === item[0] }"
@@ -99,7 +107,7 @@ onMounted(load)
         {{ item[1] }}
       </button>
     </div>
-    <section v-if="active === 'users'" class="card form-card" style="margin-bottom: 24px">
+    <section v-if="active === 'users' && canCreateUser" class="card form-card" style="margin-bottom: 24px">
       <div class="form-grid" style="grid-template-columns: 140px 160px 120px 160px auto">
         <input v-model="form.username" class="input" maxlength="8" />
         <input v-model="form.real_name" class="input" />

@@ -24,7 +24,8 @@ import ThemeToggle from '../ui/ThemeToggle.vue'
 const router = useRouter()
 const route = useRoute()
 
-const nav = [
+const isAdmin = computed(() => authState.user?.account_type === 'admin')
+const nav = computed(() => [
   { to: '/app', label: '工作台', icon: Home },
   { to: '/app/years', label: '年份', icon: CalendarDays },
   { to: '/app/teams', label: '队伍', icon: Users },
@@ -33,14 +34,14 @@ const nav = [
   { to: '/app/chats', label: '聊天', icon: MessageCircle },
   { to: '/app/announcements', label: '公告', icon: Megaphone },
   { to: '/app/toolbox', label: '工具箱', icon: Wrench },
-  { to: '/app/honors', label: '荣誉墙管理', icon: Trophy },
-  { to: '/app/admin', label: '系统管理', icon: Settings },
-]
+  { to: isAdmin.value ? '/app/honors' : '/honors', label: isAdmin.value ? '荣誉墙管理' : '荣誉墙', icon: Trophy },
+  { to: '/app/admin', label: isAdmin.value ? '系统管理' : '其他用户', icon: Settings },
+])
 
-const mainNavPaths = new Set(nav.map((item) => item.to))
+const mainNavPaths = computed(() => new Set(nav.value.map((item) => item.to)))
 const userName = computed(() => authState.user?.real_name || '用户')
 const roleName = computed(() => humanRole(authState.user?.account_type))
-const showBackButton = computed(() => route.path.startsWith('/app') && !mainNavPaths.has(route.path))
+const showBackButton = computed(() => route.path.startsWith('/app') && !mainNavPaths.value.has(route.path))
 
 onMounted(async () => {
   if (!authState.user) await loadMe().catch(() => router.replace('/login'))

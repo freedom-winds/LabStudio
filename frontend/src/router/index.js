@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { isAuthed } from '../stores/auth'
+import { authState, isAuthed, loadMe } from '../stores/auth'
 
 const Portal = () => import('../views/Portal.vue')
 const HonorWall = () => import('../views/HonorWall.vue')
@@ -37,7 +37,7 @@ const routes = [
   { path: '/app/chats', component: ChatCenter, meta: { requiresAuth: true } },
   { path: '/app/announcements', component: Announcements, meta: { requiresAuth: true } },
   { path: '/app/toolbox', component: Toolbox, meta: { requiresAuth: true } },
-  { path: '/app/honors', component: HonorAdmin, meta: { requiresAuth: true } },
+  { path: '/app/honors', component: HonorAdmin, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/app/admin', component: Admin, meta: { requiresAuth: true } },
 ]
 
@@ -76,10 +76,14 @@ function stopRouteLoading() {
   if (routeLoadingElement) routeLoadingElement.classList.remove('visible')
 }
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   startRouteLoading()
   if (to.meta.requiresAuth && !isAuthed()) return '/login'
   if (to.path === '/login' && isAuthed()) return '/app'
+  if (to.meta.requiresAdmin) {
+    const user = authState.user || (await loadMe().catch(() => null))
+    if (user?.account_type !== 'admin') return '/honors'
+  }
   return true
 })
 

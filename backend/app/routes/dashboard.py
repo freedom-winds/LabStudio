@@ -50,6 +50,15 @@ def _visible_experiment_query(user, team_ids: set[int] | None):
     return query.filter(or_(*filters)) if filters else query.filter(TeamExperiment.id == -1)
 
 
+def _my_experiment_query(user):
+    experiment_ids = [
+        row.experiment_id
+        for row in ExperimentMember.query.filter_by(user_id=user.id).all()
+    ]
+    query = TeamExperiment.query.filter(TeamExperiment.is_deleted.is_(False))
+    return query.filter(TeamExperiment.id.in_(experiment_ids)) if experiment_ids else query.filter(TeamExperiment.id == -1)
+
+
 def _visible_reservation_query(user):
     query = Reservation.query
     if not is_teacher(user):
@@ -67,6 +76,7 @@ def dashboard():
     if team_ids is not None:
         team_query = team_query.filter(Team.id.in_(team_ids)) if team_ids else team_query.filter(Team.id == -1)
     experiment_query = _visible_experiment_query(user, team_ids)
+    my_experiment_query = _my_experiment_query(user)
     reservation_query = _visible_reservation_query(user)
     pending_reservations = reservation_query.filter_by(final_status="pending").count()
     chat_ids = [row.chat_id for row in ChatMember.query.filter_by(user_id=user.id).all()]
@@ -95,7 +105,7 @@ def dashboard():
         "current_year": current_year.to_dict() if current_year else None,
         "overview": {
             "teams": len(visible_team_ids),
-            "experiments": experiment_query.count(),
+            "experiments": my_experiment_query.count(),
             "pending_reservations": pending_reservations,
             "unread_messages": unread_messages,
             "unread_notifications": unread_notifications,
@@ -106,8 +116,8 @@ def dashboard():
                 "members": team_member_query.count(),
             },
             "experiments": {
-                "working": experiment_query.filter(TeamExperiment.status.in_(["working", "ramping"])).count(),
-                "completed": experiment_query.filter_by(status="completed").count(),
+                "working": my_experiment_query.filter(TeamExperiment.status.in_(["working", "ramping"])).count(),
+                "completed": my_experiment_query.filter_by(status="completed").count(),
             },
             "reservations": {
                 "pending": pending_reservations,
@@ -127,7 +137,7 @@ def dashboard():
         ],
         "recent_activity": [
             item.to_dict()
-            for item in experiment_query.order_by(TeamExperiment.updated_at.desc()).limit(6).all()
+            for item in my_experiment_query.order_by(TeamExperiment.updated_at.desc()).limit(6).all()
         ],
         "todos": [
             item.to_dict()
