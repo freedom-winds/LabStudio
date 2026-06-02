@@ -22,7 +22,20 @@ const chatTypes = [
   ['experiment', '实验群聊'],
 ]
 const activeChat = computed(() => chats.value.find((item) => item.id === activeChatId.value))
-const filteredChats = computed(() => chats.value.filter((item) => item.chat_type === activeType.value))
+const filteredChats = computed(() =>
+  chats.value
+    .filter((item) => item.chat_type === activeType.value)
+    .sort((left, right) => chatLastActivity(right) - chatLastActivity(left)),
+)
+
+function chatLastActivity(chat) {
+  const value = chat.last_activity_at || chat.latest_message?.sent_at || chat.updated_at || chat.created_at
+  return value ? new Date(value).getTime() || 0 : 0
+}
+
+function chatTypeLabel(type) {
+  return chatTypes.find(([value]) => value === type)?.[1] || '聊天'
+}
 
 async function loadChats() {
   chats.value = await http.get('/api/chats')
@@ -65,7 +78,7 @@ async function send() {
   if (!content.value.trim() || !activeChatId.value) return
   await http.post(`/api/chats/${activeChatId.value}/messages`, { content: content.value })
   content.value = ''
-  await loadMessages()
+  await loadChats()
 }
 
 async function deleteChat() {
@@ -86,47 +99,56 @@ onMounted(loadChats)
   <AppShell>
     <section class="card chat-layout">
       <aside class="conversation-list">
-        <h3>消息中心</h3>
-        <div class="tabs" style="margin-bottom: 18px">
+        <div class="conversation-list-header">
+          <h3>消息中心</h3>
+        </div>
+        <div class="chat-type-tabs" role="tablist" aria-label="聊天类型">
           <button
             v-for="[type, label] in chatTypes"
             :key="type"
-            class="tab"
+            class="chat-type-tab"
             :class="{ active: activeType === type }"
             @click="switchType(type)"
           >
             {{ label }}
           </button>
         </div>
-        <button
-          v-for="chat in filteredChats"
-          :key="chat.id"
-          class="conversation"
-          :class="{ active: chat.id === activeChatId }"
-          @click="selectChat(chat)"
-        >
-          <span class="avatar">{{ chat.title.slice(0, 1) }}</span>
-          <span style="text-align: left">
-            <strong style="color: var(--text)">{{ chat.title }}</strong>
-            <br />
-            <small>{{ chat.latest_message?.content || '暂无消息' }}</small>
-          </span>
-          <span v-if="chat.unread_count" class="badge danger">{{ chat.unread_count }}</span>
-        </button>
-        <div v-if="!filteredChats.length" style="color: var(--muted); padding: 16px">暂无聊天</div>
+        <div class="conversation-scroll">
+          <button
+            v-for="chat in filteredChats"
+            :key="chat.id"
+            class="conversation"
+            :class="{ active: chat.id === activeChatId }"
+            @click="selectChat(chat)"
+          >
+            <span class="avatar">{{ chat.title.slice(0, 1) }}</span>
+            <span class="conversation-body">
+              <span class="conversation-title-row">
+                <strong>{{ chat.title }}</strong>
+                <small v-if="chat.latest_message">{{ formatDate(chat.latest_message.sent_at) }}</small>
+              </span>
+              <span class="conversation-preview">{{ chat.latest_message?.content || '暂无消息' }}</span>
+            </span>
+            <span v-if="chat.unread_count" class="badge danger">{{ chat.unread_count }}</span>
+          </button>
+          <div v-if="!filteredChats.length" class="chat-empty">暂无聊天</div>
+        </div>
       </aside>
-      <section style="display: grid; grid-template-rows: auto 1fr auto; min-height: 680px">
-        <header style="display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 20px 28px; border-bottom: 1px solid var(--line)">
-          <strong style="color: var(--text); font-size: 18px">{{ activeChat?.title || '暂无聊天' }}</strong>
+      <section class="chat-panel">
+        <header class="chat-header">
+          <div class="chat-title">
+            <strong>{{ activeChat?.title || '暂无聊天' }}</strong>
+            <span>{{ activeChat ? chatTypeLabel(activeChat.chat_type) : '请选择一个会话' }}</span>
+          </div>
           <button v-if="activeChat" class="btn danger" @click="deleteChat"><Trash2 :size="16" />删除会话</button>
         </header>
         <div class="messages">
-          <div v-if="!activeChat" style="color: var(--muted); padding: 24px">暂无聊天</div>
-          <div v-else-if="!messages.length" style="color: var(--muted); padding: 24px">暂无聊天</div>
+          <div v-if="!activeChat" class="chat-empty">暂无聊天</div>
+          <div v-else-if="!messages.length" class="chat-empty">暂无聊天</div>
           <div v-for="message in messages" :key="message.id" class="message-row" :class="{ mine: message.sender_id === authState.user?.id }">
             <span v-if="message.sender_id !== authState.user?.id" class="avatar">{{ message.sender?.real_name?.slice(0, 1) || '?' }}</span>
             <div class="bubble">
-              <div v-if="message.sender_id !== authState.user?.id" style="margin-bottom: 4px; color: var(--faint); font-size: 12px">
+              <div v-if="message.sender_id !== authState.user?.id" class="message-sender">
                 {{ message.sender?.real_name || '未知用户' }}
               </div>
               <span v-if="message.is_recalled">该消息已撤回</span>
@@ -136,7 +158,7 @@ onMounted(loadChats)
                   <Download :size="14" />下载附件
                 </a>
               </template>
-              <div style="margin-top: 6px; color: var(--faint); font-size: 12px">{{ formatDate(message.sent_at) }}</div>
+              <div class="message-time">{{ formatDate(message.sent_at) }}</div>
             </div>
           </div>
         </div>

@@ -67,7 +67,9 @@ def list_chats():
         item["unread_count"] = ChatMessage.query.filter_by(chat_id=chat.id, is_recalled=False).count()
         latest = ChatMessage.query.filter_by(chat_id=chat.id).order_by(ChatMessage.sent_at.desc()).first()
         item["latest_message"] = _serialize_message(latest) if latest else None
+        item["last_activity_at"] = latest.sent_at if latest else (chat.updated_at or chat.created_at)
         chats.append(item)
+    chats.sort(key=lambda item: item.get("last_activity_at") or "", reverse=True)
     return ok(chats)
 
 
