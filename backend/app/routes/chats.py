@@ -53,6 +53,14 @@ def _serialize_message(message: ChatMessage) -> dict:
     return data
 
 
+def _private_peer(chat_id: int, actor_id: int) -> dict | None:
+    peer_member = ChatMember.query.filter(
+        ChatMember.chat_id == chat_id,
+        ChatMember.user_id != actor_id,
+    ).first()
+    return _user_summary(peer_member.user_id) if peer_member else None
+
+
 @bp.get("")
 @login_required()
 def list_chats():
@@ -64,6 +72,11 @@ def list_chats():
         if not chat:
             continue
         item = chat.to_dict()
+        if chat.chat_type == "private":
+            peer = _private_peer(chat.id, actor.id)
+            item["private_peer"] = peer
+            if peer:
+                item["title"] = peer["real_name"]
         item["unread_count"] = ChatMessage.query.filter_by(chat_id=chat.id, is_recalled=False).count()
         latest = ChatMessage.query.filter_by(chat_id=chat.id).order_by(ChatMessage.sent_at.desc()).first()
         item["latest_message"] = _serialize_message(latest) if latest else None
