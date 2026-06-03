@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import AppShell from '../components/layout/AppShell.vue'
 import StatCard from '../components/ui/StatCard.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
+import UserAvatar from '../components/ui/UserAvatar.vue'
 import { http } from '../api/client'
 import { formatDate, humanRole } from '../data/formatters'
 
@@ -34,7 +35,7 @@ onMounted(async () => {
   <AppShell>
     <section v-if="dashboard" class="welcome">
       <div class="welcome-user">
-        <span class="avatar large">{{ dashboard.user.real_name.slice(0, 1) }}</span>
+        <UserAvatar :user="dashboard.user" :size="96" />
         <div>
           <h1>{{ dashboard.user.real_name }}，上午好！</h1>
           <div class="badge-row">

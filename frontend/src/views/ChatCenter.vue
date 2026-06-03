@@ -3,6 +3,7 @@ import { Download, Send, Trash2 } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
+import UserAvatar from '../components/ui/UserAvatar.vue'
 import { http } from '../api/client'
 import { authState } from '../stores/auth'
 import { formatDate } from '../data/formatters'
@@ -121,7 +122,7 @@ onMounted(loadChats)
             :class="{ active: chat.id === activeChatId }"
             @click="selectChat(chat)"
           >
-            <span class="avatar">{{ chat.title.slice(0, 1) }}</span>
+            <UserAvatar :user="chat.private_peer" :name="chat.title" :size="38" />
             <span class="conversation-body">
               <span class="conversation-title-row">
                 <strong>{{ chat.title }}</strong>
@@ -146,7 +147,7 @@ onMounted(loadChats)
           <div v-if="!activeChat" class="chat-empty">暂无聊天</div>
           <div v-else-if="!messages.length" class="chat-empty">暂无聊天</div>
           <div v-for="message in messages" :key="message.id" class="message-row" :class="{ mine: message.sender_id === authState.user?.id }">
-            <span v-if="message.sender_id !== authState.user?.id" class="avatar">{{ message.sender?.real_name?.slice(0, 1) || '?' }}</span>
+            <UserAvatar v-if="message.sender_id !== authState.user?.id" :user="message.sender" :size="38" />
             <div class="bubble">
               <div v-if="message.sender_id !== authState.user?.id" class="message-sender">
                 {{ message.sender?.real_name || '未知用户' }}

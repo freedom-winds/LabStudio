@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
+import UserAvatar from '../components/ui/UserAvatar.vue'
 import { http } from '../api/client'
 import { authState } from '../stores/auth'
 import { humanRole } from '../data/formatters'
@@ -159,12 +160,12 @@ onMounted(load)
           <div v-for="member in team.members" :key="member.id" class="card pad">
             <div style="display: flex; gap: 14px; align-items: center">
               <button
-                class="avatar"
+                class="avatar-button"
                 :disabled="member.user.id === authState.user?.id"
                 title="发起私聊"
                 @click="startPrivateChat(member.user)"
               >
-                {{ member.user.real_name.slice(0, 1) }}
+                <UserAvatar :user="member.user" />
               </button>
               <div>
                 <strong style="color: var(--text)">{{ member.user.real_name }}</strong>

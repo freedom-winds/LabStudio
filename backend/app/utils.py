@@ -109,6 +109,7 @@ DOCUMENT_EXTENSIONS = {".doc", ".docx", ".pdf", ".xls", ".xlsx", ".jpg", ".jpeg"
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv"}
 DATA_EXTENSIONS = {".csv", ".xlsx", ".txt", ".json", ".dat"}
 PPT_EXTENSIONS = {".ppt", ".pptx", ".pdf"}
+AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
 def file_category(filename: str) -> str:
@@ -126,10 +127,13 @@ def validate_upload(file: FileStorage, category: str | None = None) -> None:
         raise APIError("INVALID_FILE", "File type is not allowed.", 422)
     if category == "ppt" and ext not in PPT_EXTENSIONS:
         raise APIError("INVALID_FILE", "Only PPT/PPTX/PDF files are allowed for presentation versions.", 422)
+    if category == "avatar":
+        if ext not in AVATAR_EXTENSIONS or not (file.mimetype or "").startswith("image/"):
+            raise APIError("INVALID_FILE", "Only PNG/JPG/JPEG/WEBP images are allowed for avatars.", 422)
 
 
-def save_upload(file: FileStorage, owner: str, owner_id: int | None = None) -> dict:
-    validate_upload(file)
+def save_upload(file: FileStorage, owner: str, owner_id: int | None = None, category: str | None = None) -> dict:
+    validate_upload(file, category)
     root = Path(current_app.config["UPLOAD_ROOT"])
     folder = root / owner / (str(owner_id) if owner_id is not None else "general")
     folder.mkdir(parents=True, exist_ok=True)

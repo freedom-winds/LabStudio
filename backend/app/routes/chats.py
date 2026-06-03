@@ -44,6 +44,7 @@ def _user_summary(user_id: int | None) -> dict | None:
         "username": user.username,
         "real_name": user.real_name,
         "account_type": user.account_type,
+        "avatar_url": user.to_dict().get("avatar_url", ""),
     }
 
 

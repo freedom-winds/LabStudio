@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../stores/auth'
 import ThemeToggle from '../components/ui/ThemeToggle.vue'
+import SystemVersion from '../components/ui/SystemVersion.vue'
 
 const router = useRouter()
 const username = ref('')
@@ -50,5 +51,6 @@ async function submit() {
         </button>
       </div>
     </form>
+    <SystemVersion />
   </main>
 </template>

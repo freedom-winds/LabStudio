@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Download, FileText, FlaskConical, Folder, FolderPlus, MessageCircle, Pencil, Plus, Trash2, Upload, UserPlus } from 'lucide-vue-next'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
+import UserAvatar from '../components/ui/UserAvatar.vue'
 import { http } from '../api/client'
 import { authState } from '../stores/auth'
 import { fileSize, formatDate, humanRole, shortDate } from '../data/formatters'
@@ -603,8 +604,8 @@ onMounted(load)
         <div class="card-grid three">
           <article v-for="member in experiment.members" :key="member.id" class="card pad">
             <div style="display: flex; gap: 14px; align-items: center">
-              <button class="avatar" :title="`私聊 ${member.user.real_name}`" @click="startPrivateChat(member.user)">
-                {{ member.user.real_name.slice(0, 1) }}
+              <button class="avatar-button" :title="`私聊 ${member.user.real_name}`" @click="startPrivateChat(member.user)">
+                <UserAvatar :user="member.user" />
               </button>
               <div>
                 <strong style="color: var(--text)">{{ member.user.real_name }}</strong>

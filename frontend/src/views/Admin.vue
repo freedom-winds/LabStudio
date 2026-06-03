@@ -1,9 +1,10 @@
 <script setup>
-import { MessageCircle, Pencil, Save, Trash2, X } from 'lucide-vue-next'
+import { MessageCircle, Pencil, Save, Trash2, Upload, X } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '../components/layout/AppShell.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
+import UserAvatar from '../components/ui/UserAvatar.vue'
 import { http } from '../api/client'
 import { authState } from '../stores/auth'
 import { formatDate, humanRole } from '../data/formatters'
@@ -12,29 +13,38 @@ const router = useRouter()
 const active = ref('users')
 const users = ref([])
 const logs = ref([])
-const form = ref({ username: '20260001', real_name: '新用户', gender: '女', account_type: 'student' })
+const userStats = ref(null)
 const editingUserId = ref(null)
 const editForm = ref({ real_name: '', gender: '女', account_type: 'student', status: 'active' })
 const error = ref('')
 const isAdmin = computed(() => authState.user?.account_type === 'admin')
 const isTeacher = computed(() => authState.user?.account_type === 'teacher')
 const canCreateUser = computed(() => isAdmin.value || isTeacher.value)
+const canViewUserStats = computed(() => isAdmin.value || isTeacher.value)
 const adminTabs = computed(() =>
   isAdmin.value
     ? [['users', '用户管理'], ['permissions', '权限管理'], ['logs', '操作日志']]
-    : [['users', '其他用户']],
+    : [['users', isTeacher.value ? '用户管理' : '其他用户']],
 )
+const currentCohort = new Date().getFullYear() + 2
+const defaultUsername = () => `${currentCohort}0101`
+const defaultUserForm = () => ({ username: defaultUsername(), real_name: '新用户', gender: '女', account_type: 'student' })
+const form = ref(defaultUserForm())
 
 async function load() {
   error.value = ''
   if (!isAdmin.value && active.value !== 'users') active.value = 'users'
-  if (active.value === 'users') users.value = (await http.get('/api/users')).items
+  if (active.value === 'users') {
+    users.value = (await http.get('/api/users')).items
+    userStats.value = canViewUserStats.value ? await http.get('/api/users/stats') : null
+  }
   if (active.value === 'logs') logs.value = (await http.get('/api/audit-logs')).items
 }
 
 async function createUser() {
   try {
     await http.post('/api/users', form.value)
+    form.value = defaultUserForm()
     await load()
   } catch (err) {
     error.value = err.message || '创建用户失败'
@@ -85,6 +95,22 @@ async function startPrivateChat(user) {
   router.push(`/app/chats?chat_id=${chat.id}`)
 }
 
+async function uploadAvatar(user, event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const body = new FormData()
+  body.append('file', file)
+  try {
+    const updated = await http.post(`/api/users/${user.id}/avatar`, body)
+    if (updated.id === authState.user?.id) authState.user = updated
+    await load()
+  } catch (err) {
+    error.value = err.message || '上传头像失败'
+  } finally {
+    event.target.value = ''
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -92,8 +118,8 @@ onMounted(load)
   <AppShell>
     <div class="page-title">
       <div>
-        <h1>{{ isAdmin ? '系统管理' : '其他用户' }}</h1>
-        <p>{{ isAdmin ? '用户、权限与操作日志管理。点击用户头像可发起私聊。' : '查看平台用户，点击用户头像可发起私聊。' }}</p>
+        <h1>{{ isAdmin ? '系统管理' : isTeacher ? '用户管理' : '其他用户' }}</h1>
+        <p>{{ isAdmin || isTeacher ? '用户、权限与基础信息管理。点击用户头像可发起私聊。' : '查看平台用户，点击用户头像可发起私聊。' }}</p>
       </div>
     </div>
     <div class="admin-tabs">
@@ -107,6 +133,62 @@ onMounted(load)
         {{ item[1] }}
       </button>
     </div>
+    <section v-if="active === 'users' && canViewUserStats && userStats" class="card pad user-stats-panel">
+      <div class="section-title">
+        <h3>人员统计</h3>
+      </div>
+      <div class="user-stats-summary">
+        <div class="user-stat-block">
+          <span>总人数</span>
+          <strong>{{ userStats.total }}</strong>
+        </div>
+        <div class="user-stat-block">
+          <span>学生学号</span>
+          <strong>{{ userStats.student_code_total }}</strong>
+        </div>
+        <div class="user-stat-block">
+          <span>教师账号</span>
+          <strong>{{ userStats.teacher_account_total }}</strong>
+        </div>
+        <div class="user-stat-block">
+          <span>默认届数</span>
+          <strong>{{ currentCohort }}</strong>
+        </div>
+      </div>
+      <div class="user-stats-grid">
+        <div>
+          <h4>年级人数</h4>
+          <div class="stat-table-scroll">
+            <table class="table compact">
+              <thead><tr><th>年级</th><th>人数</th></tr></thead>
+              <tbody>
+                <tr v-for="item in userStats.years" :key="item.year">
+                  <td>{{ item.year }} 届</td>
+                  <td>{{ item.count }}</td>
+                </tr>
+                <tr v-if="!userStats.years.length"><td colspan="2">暂无数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h4>班级人数</h4>
+          <div class="stat-table-scroll">
+            <table class="table compact">
+              <thead><tr><th>年级</th><th>班级</th><th>人数</th></tr></thead>
+              <tbody>
+                <tr v-for="item in userStats.classes" :key="`${item.year}-${item.class_no}`">
+                  <td>{{ item.year }} 届</td>
+                  <td>{{ item.class_no }} 班</td>
+                  <td>{{ item.count }}</td>
+                </tr>
+                <tr v-if="!userStats.classes.length"><td colspan="3">暂无数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
     <section v-if="active === 'users' && canCreateUser" class="card form-card" style="margin-bottom: 24px">
       <div class="form-grid" style="grid-template-columns: 140px 160px 120px 160px auto">
         <input v-model="form.username" class="input" maxlength="8" />
@@ -129,7 +211,7 @@ onMounted(load)
             <td>
               <input v-if="editingUserId === user.id" v-model="editForm.real_name" class="input" style="width: 140px" />
               <button v-else class="btn ghost" style="gap: 10px" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
-                <span class="avatar" style="width: 34px; height: 34px; border-radius: 12px">{{ user.real_name.slice(0, 1) }}</span>
+                <UserAvatar :user="user" :size="34" />
                 {{ user.real_name }}
               </button>
             </td>
@@ -169,6 +251,10 @@ onMounted(load)
                 <button class="btn ghost" :disabled="user.id === authState.user?.id" @click="startPrivateChat(user)">
                   <MessageCircle :size="16" />私聊
                 </button>
+                <label v-if="canEditUser(user)" class="btn outline">
+                  <Upload :size="16" />头像
+                  <input hidden type="file" accept="image/png,image/jpeg,image/jpg,image/webp" @change="uploadAvatar(user, $event)" />
+                </label>
                 <button v-if="isAdmin" class="btn danger" :disabled="user.id === authState.user?.id" @click="deleteUser(user)">
                   <Trash2 :size="16" />删除
                 </button>

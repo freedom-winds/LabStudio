@@ -59,6 +59,16 @@ class User(db.Model, TimestampMixin, SerializerMixin):
     deleted_at = db.Column(db.String(32), nullable=True)
     delete_reason = db.Column(db.Text, nullable=True)
 
+    def to_dict(self) -> dict:
+        data = super().to_dict()
+        avatar = FileAsset.query.filter_by(
+            owner_type="user_avatar",
+            owner_id=self.id,
+            is_deleted=False,
+        ).order_by(FileAsset.updated_at.desc()).first()
+        data["avatar_url"] = f"/api/users/{self.id}/avatar?v={avatar.id}" if avatar else ""
+        return data
+
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
 

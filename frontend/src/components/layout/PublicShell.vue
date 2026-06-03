@@ -1,6 +1,7 @@
 <script setup>
 import { FlaskConical, LogIn } from 'lucide-vue-next'
 import ThemeToggle from '../ui/ThemeToggle.vue'
+import SystemVersion from '../ui/SystemVersion.vue'
 </script>
 
 <template>
@@ -28,5 +29,6 @@ import ThemeToggle from '../ui/ThemeToggle.vue'
       </div>
     </header>
     <slot />
+    <SystemVersion />
   </div>
 </template>
