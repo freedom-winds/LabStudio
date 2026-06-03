@@ -23,21 +23,36 @@ def create_app(config_class=Config):
 
     register_routes(app)
 
+    def send_frontend(requested=""):
+        frontend_dist = Path(app.config["FRONTEND_DIST"])
+        is_api_path = request.path == "/api" or request.path.startswith("/api/")
+        if is_api_path or request.method != "GET" or not frontend_dist.joinpath("index.html").is_file():
+            return fail("NOT_FOUND", "Resource not found.", 404)
+        if requested:
+            asset = frontend_dist.joinpath(requested)
+            if asset.is_file():
+                return send_from_directory(frontend_dist, requested)
+            if Path(requested).suffix:
+                return fail("NOT_FOUND", "Resource not found.", 404)
+        return send_from_directory(frontend_dist, "index.html")
+
+    @app.get("/")
+    def frontend_root():
+        return send_frontend("")
+
+    @app.get("/<path:requested>")
+    def frontend_path(requested):
+        return send_frontend(requested)
+
     @app.errorhandler(APIError)
     def handle_api_error(error):
         return fail(error.code, error.message, error.status_code)
 
     @app.errorhandler(404)
     def handle_404(_error):
-        frontend_dist = Path(app.config["FRONTEND_DIST"])
-        is_api_path = request.path == "/api" or request.path.startswith("/api/")
-        if request.method == "GET" and not is_api_path and frontend_dist.joinpath("index.html").is_file():
-            requested = request.path.lstrip("/")
-            if requested:
-                asset = frontend_dist.joinpath(requested)
-                if asset.is_file():
-                    return send_from_directory(frontend_dist, requested)
-            return send_from_directory(frontend_dist, "index.html")
+        requested = request.path.lstrip("/")
+        if request.method == "GET":
+            return send_frontend(requested)
         return fail("NOT_FOUND", "Resource not found.", 404)
 
     @app.errorhandler(500)
