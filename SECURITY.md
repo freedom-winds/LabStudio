@@ -10,7 +10,7 @@ Security updates are provided for the current main branch of this repository.
 
 ### Reporting a Vulnerability
 
-If you discover a security issue, please report it privately to the project maintainer's email instead of opening a public issue. Include the affected component, reproduction steps, expected impact, and any relevant logs or screenshots.
+If you discover a security issue, please report it privately to the project maintainer's email throught github instead of opening a public issue. Include the affected component, reproduction steps, expected impact, and any relevant logs or screenshots.
 
 ### Response Process
 
@@ -30,7 +30,7 @@ Out of scope: attacks requiring physical access, social engineering, denial-of-s
 
 ### 报告漏洞
 
-如果你发现安全问题，请私下联系项目维护者邮箱，不要直接创建公开 issue。报告中请包含受影响组件、复现步骤、预期影响，以及相关日志或截图。
+如果你发现安全问题，请私下联系项目维护者邮箱（可从github获取），不要直接创建公开 issue。报告中请包含受影响组件、复现步骤、预期影响，以及相关日志或截图。
 
 ### 响应流程
 
