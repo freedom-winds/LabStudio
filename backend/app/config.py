@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "lexy-lab-dev-secret")
+    SECRET_KEY = os.getenv("SECRET_KEY", "nandrx-lab-dev-secret")
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", f"sqlite:///{BASE_DIR / 'data' / 'lexy_lab.db'}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_AS_ASCII = False

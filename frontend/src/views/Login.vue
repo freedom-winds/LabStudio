@@ -1,5 +1,5 @@
 <script setup>
-import { FlaskConical, LogIn } from 'lucide-vue-next'
+import { LogIn } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../stores/auth'
@@ -31,8 +31,8 @@ async function submit() {
     <div class="login-actions"><ThemeToggle /></div>
     <form class="login-card" autocomplete="off" @submit.prevent="submit">
       <RouterLink to="/" class="brand">
-        <span class="brand-mark"><FlaskConical :size="26" :stroke-width="1.75" /></span>
-        <span>Lexy Lab</span>
+        <span class="brand-mark"><img src="/nandx.png" alt="" aria-hidden="true" /></span>
+        <span>NX Lab</span>
       </RouterLink>
       <div class="form-grid">
         <div class="field">

@@ -1,5 +1,5 @@
 <script setup>
-import { FlaskConical, LogIn } from 'lucide-vue-next'
+import { LogIn } from 'lucide-vue-next'
 import ThemeToggle from '../ui/ThemeToggle.vue'
 import SystemVersion from '../ui/SystemVersion.vue'
 </script>
@@ -8,8 +8,8 @@ import SystemVersion from '../ui/SystemVersion.vue'
   <div class="public-shell">
     <header class="public-header">
       <RouterLink to="/" class="brand">
-        <span class="brand-mark"><FlaskConical :size="26" :stroke-width="1.75" /></span>
-        <span>Lexy Lab</span>
+        <span class="brand-mark"><img src="/nandx.png" alt="" aria-hidden="true" /></span>
+        <span>NX Lab</span>
       </RouterLink>
       <nav class="public-nav">
         <RouterLink to="/">首页</RouterLink>

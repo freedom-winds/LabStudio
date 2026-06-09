@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Bell,
   CalendarDays,
-  FlaskConical,
   Home,
   KeyRound,
   LogOut,
@@ -69,8 +68,8 @@ function goBack() {
   <div class="app-layout">
     <aside class="sidebar">
       <RouterLink to="/app" class="brand">
-        <span class="brand-mark"><FlaskConical :size="26" :stroke-width="1.75" /></span>
-        <span>Lexy Lab</span>
+        <span class="brand-mark"><img src="/nandx.png" alt="" aria-hidden="true" /></span>
+        <span>NX Lab</span>
       </RouterLink>
       <nav class="nav-list">
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to" class="nav-item">

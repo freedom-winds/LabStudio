@@ -8,7 +8,7 @@ bp = Blueprint("public", __name__)
 
 @bp.get("/health")
 def health():
-    return ok({"status": "ok", "name": "Lexy Lab"})
+    return ok({"status": "ok", "name": "NandRX Lab"})
 
 
 @bp.get("/honor-members")

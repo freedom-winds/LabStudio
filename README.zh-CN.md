@@ -1,4 +1,4 @@
-# Lexy Lab 实验室垂直管理平台
+# NandRX Lab 实验室垂直管理平台
 
 [English README](README.md)
 

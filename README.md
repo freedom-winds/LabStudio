@@ -1,4 +1,4 @@
-# Lexy Lab Vertical Laboratory Management Platform
+# NandRX Lab Vertical Laboratory Management Platform
 
 [中文说明](README.zh-CN.md)
 
