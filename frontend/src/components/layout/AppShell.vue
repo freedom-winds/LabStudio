@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Bell,
   CalendarDays,
+  FlaskConical,
   Home,
   KeyRound,
   LogOut,
